@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Resources & Messages | BridgeStep</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="platform.css">
+</head>
+<body>
+
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main">
+    <div class="topbar">
+      <h2>Resources & Messages</h2>
+      <div class="topbar-right" id="topbar-right" style="position:relative;"></div>
+    </div>
+    <div class="content" id="content"></div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="platform.js"></script>
+<script>
+const user = Auth.requireAuth(['student','mentor','admin']);
+if(user){
+  renderChrome(user, 'resources.html');
+
+  const allUsers = DB.read('users');
+  const resources = DB.read('resources');
+
+  // who this user can message: their mentor/students, or for admin — everyone
+  let contacts = [];
+  if(user.role==='student') contacts = allUsers.filter(u=>u.id===user.mentorId);
+  if(user.role==='mentor') contacts = allUsers.filter(u=>(user.studentIds||[]).includes(u.id));
+  if(user.role==='admin') contacts = allUsers.filter(u=>u.id!==user.id);
+
+  const hashContact = location.hash.startsWith('#messages-') ? location.hash.replace('#messages-','') : (contacts[0]?contacts[0].id:null);
+  let activeContact = hashContact;
+
+  document.getElementById('content').innerHTML = `
+    <div class="grid grid-2" style="align-items:start;">
+      <div class="card">
+        <h3>Resource Library</h3>
+        ${resources.length? resources.map(r=>`
+          <div class="list-row">
+            <div class="who"><span style="font-size:18px;">📄</span><div><div style="font-weight:700; font-size:13.5px;">${r.title}</div><div class="meta">${r.type} · ${r.program}</div></div></div>
+            <a href="${r.url}" class="btn btn-ghost btn-sm">Open</a>
+          </div>`).join('') : `<div class="empty-state">No resources yet.</div>`}
+      </div>
+
+      <div class="card">
+        <h3>Messages</h3>
+        ${contacts.length ? `
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;">
+            ${contacts.map(c=>`<span class="tag-chip" style="cursor:pointer; ${c.id===activeContact?'background:#FDF6E3;border-color:var(--gold);':''}" onclick="switchContact('${c.id}')">${c.name}</span>`).join('')}
+          </div>
+          <div class="chat-box">
+            <div class="chat-messages" id="chatMessages"></div>
+            <div class="chat-input">
+              <input id="chatInput" placeholder="Type a message...">
+              <button class="btn btn-navy btn-sm" onclick="sendMsg()">Send</button>
+            </div>
+          </div>
+        ` : `<div class="empty-state">No conversations yet.</div>`}
+      </div>
+    </div>
+  `;
+
+  function renderChat(){
+    if(!activeContact) return;
+    const all = DB.read('messages');
+    const convo = all.filter(m=>(m.from===user.id&&m.to===activeContact)||(m.from===activeContact&&m.to===user.id)).sort((a,b)=>new Date(a.ts)-new Date(b.ts));
+    const box = document.getElementById('chatMessages');
+    if(!box) return;
+    box.innerHTML = convo.length ? convo.map(m=>`<div class="bubble ${m.from===user.id?'mine':'theirs'}">${m.text}</div>`).join('') : `<div style="color:var(--text-muted); font-size:13px; text-align:center; margin-top:20px;">Say hello 👋</div>`;
+    box.scrollTop = box.scrollHeight;
+  }
+  renderChat();
+
+  window.switchContact = function(id){
+    activeContact = id;
+    document.getElementById('content').querySelectorAll('.tag-chip').forEach(el=>el.style.cssText='cursor:pointer;');
+    renderChat();
+  };
+
+  window.sendMsg = function(){
+    const input = document.getElementById('chatInput');
+    const text = input.value.trim();
+    if(!text || !activeContact) return;
+    const all = DB.read('messages');
+    all.push({id:uid('msg'), from:user.id, to:activeContact, text, ts:nowISO()});
+    DB.write('messages', all);
+    Notif.add(activeContact, `New message from ${user.name}.`);
+    input.value = '';
+    renderChat();
+  };
+  document.addEventListener('keypress', e=>{ if(e.key==='Enter' && document.activeElement.id==='chatInput') sendMsg(); });
+}
+</script>
+</body>
+</html>

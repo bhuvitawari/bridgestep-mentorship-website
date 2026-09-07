@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session Room | BridgeStep</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="platform.css">
+<style>
+  #jitsiContainer{width:100%; height:520px; border-radius:12px; overflow:hidden; background:#000;}
+  .session-topbar{display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;}
+  .timer{font-family:'Fraunces',serif; font-size:22px; color:var(--navy); font-weight:600;}
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main">
+    <div class="topbar">
+      <h2>Session Room</h2>
+      <div class="topbar-right" id="topbar-right" style="position:relative;"></div>
+    </div>
+    <div class="content">
+      <div class="card">
+        <div class="session-topbar">
+          <div>
+            <div style="font-weight:700; font-size:14px;" id="sessionWith">—</div>
+            <div class="meta" style="color:var(--text-muted); font-size:12.5px;">Video · Audio · Chat · Screen share — powered by Jitsi Meet, opens directly here.</div>
+          </div>
+          <div style="text-align:right;">
+            <div class="timer" id="timerDisplay">00:00:00</div>
+            <button class="btn btn-gold btn-sm" id="toggleBtn" style="margin-top:6px;">Start Session</button>
+          </div>
+        </div>
+        <div id="jitsiContainer"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://meet.jit.si/external_api.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="platform.js"></script>
+<script>
+const user = Auth.requireAuth(['student','mentor','admin']);
+if(user){
+  renderChrome(user, 'session.html');
+
+  // Find the counterpart for a friendly room label + who to credit hours to
+  const allUsers = DB.read('users');
+  let counterpart = null;
+  if(user.role==='student') counterpart = allUsers.find(u=>u.id===user.mentorId);
+  if(user.role==='mentor') counterpart = allUsers.find(u=>(user.studentIds||[])[0]===u.id);
+  document.getElementById('sessionWith').textContent = counterpart ? `Session with ${counterpart.name}` : 'Open session room';
+
+  // A stable, private-ish room name per pair (demo — for production, generate per-scheduled-session)
+  const roomName = 'BridgeStep-' + [user.id, counterpart?counterpart.id:'open'].sort().join('-').replace(/[^a-zA-Z0-9-]/g,'');
+
+  let jitsiApi = null;
+  let startTime = null;
+  let timerInterval = null;
+
+  function loadJitsi(){
+    jitsiApi = new JitsiMeetExternalAPI('meet.jit.si', {
+      roomName: roomName,
+      parentNode: document.getElementById('jitsiContainer'),
+      width:'100%', height:520,
+      userInfo:{ displayName: user.name },
+      configOverwrite:{ prejoinPageEnabled:false },
+    });
+  }
+  loadJitsi();
+
+  function fmtElapsed(ms){
+    const s = Math.floor(ms/1000);
+    const hh = String(Math.floor(s/3600)).padStart(2,'0');
+    const mm = String(Math.floor((s%3600)/60)).padStart(2,'0');
+    const ss = String(s%60).padStart(2,'0');
+    return `${hh}:${mm}:${ss}`;
+  }
+
+  document.getElementById('toggleBtn').addEventListener('click', function(){
+    if(!startTime){
+      startTime = Date.now();
+      this.textContent = 'End Session';
+      this.classList.remove('btn-gold'); this.classList.add('btn-danger');
+      timerInterval = setInterval(()=>{
+        document.getElementById('timerDisplay').textContent = fmtElapsed(Date.now()-startTime);
+      }, 1000);
+    } else {
+      clearInterval(timerInterval);
+      const durationMinutes = Math.max(1, Math.round((Date.now()-startTime)/60000));
+      // Record the session + update hour totals automatically
+      const sessions = DB.read('sessions');
+      const record = {
+        id: uid('sess'),
+        studentId: user.role==='student' ? user.id : (counterpart?counterpart.id:null),
+        mentorId: user.role==='mentor' ? user.id : (counterpart?counterpart.id:null),
+        start: new Date(startTime).toISOString(),
+        status:'completed', durationMinutes, notes:null,
+        attendance:{ [user.role]:true },
+      };
+      sessions.push(record);
+      DB.write('sessions', sessions);
+
+      const users = DB.read('users');
+      const me = users.find(u=>u.id===user.id);
+      me.hoursTotal = Math.round(((me.hoursTotal||0) + durationMinutes/60) * 10)/10;
+      DB.write('users', users);
+
+      alert(`Session ended — ${durationMinutes} minute(s) logged to your total hours.`);
+      window.location.href = user.role + '.html';
+    }
+  });
+}
+</script>
+</body>
+</html>

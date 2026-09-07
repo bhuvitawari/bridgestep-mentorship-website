@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Log In | BridgeStep Mentorship</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="platform.css">
+</head>
+<body>
+
+<div class="auth-shell">
+  <div class="auth-card">
+    <a href="index.html" class="auth-logo">🌉 BridgeStep</a>
+    <h1>Welcome back</h1>
+    <p class="auth-sub">Log in to reach your dashboard.</p>
+
+    <div id="msg" class="msg error"></div>
+
+    <form id="loginForm">
+      <div class="field"><label>Email</label><input type="email" id="email" required placeholder="you@example.com"></div>
+      <div class="field"><label>Password</label><input type="password" id="password" required placeholder="••••••••"></div>
+      <button class="btn btn-gold" type="submit" style="width:100%;">Log In</button>
+    </form>
+
+    <p class="auth-switch"><a href="#" id="forgotLink">Forgot your password?</a></p>
+    <p class="auth-switch">New here? <a href="signup.html">Create an account</a></p>
+
+    <div class="demo-note">
+      <b>Try it now — demo accounts:</b><br>
+      Student: sara.student@bridgestep.org / student123<br>
+      Mentor: layla.mentor@bridgestep.org / mentor123<br>
+      Admin: admin@bridgestep.org / admin123
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="forgotModal">
+  <div class="modal-box">
+    <h3>Reset your password</h3>
+    <div id="forgotMsg" class="msg"></div>
+    <div class="field"><label>Email</label><input type="email" id="forgotEmail" placeholder="you@example.com"></div>
+    <div style="display:flex; gap:10px;">
+      <button class="btn btn-ghost" style="flex:1;" onclick="document.getElementById('forgotModal').classList.remove('show')">Cancel</button>
+      <button class="btn btn-navy" style="flex:1;" id="forgotSubmit">Send Reset Link</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="platform.js"></script>
+<script>
+  document.getElementById('loginForm').addEventListener('submit', function(e){
+    e.preventDefault();
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const msg = document.getElementById('msg');
+    Auth.login(email, password).then(user=>{
+      window.location.href = user.role + '.html';
+    }).catch(err=>{
+      msg.textContent = err.message || 'Something went wrong.';
+      msg.classList.add('show');
+    });
+  });
+
+  document.getElementById('forgotLink').addEventListener('click', function(e){
+    e.preventDefault();
+    document.getElementById('forgotModal').classList.add('show');
+  });
+
+  document.getElementById('forgotSubmit').addEventListener('click', function(){
+    const email = document.getElementById('forgotEmail').value.trim();
+    const m = document.getElementById('forgotMsg');
+    Auth.resetPassword(email).then(()=>{
+      m.textContent = 'Reset link sent (in demo mode, no email is actually sent — this confirms the account exists).';
+      m.className = 'msg success show';
+    }).catch(err=>{
+      m.textContent = err.message;
+      m.className = 'msg error show';
+    });
+  });
+</script>
+</body>
+</html>

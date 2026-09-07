@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Student Dashboard | BridgeStep</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="platform.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main">
+    <div class="topbar">
+      <h2 id="pageTitle">Dashboard</h2>
+      <div class="topbar-right" id="topbar-right" style="position:relative;"></div>
+    </div>
+    <div class="content" id="content"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="certModal">
+  <div class="modal-box" style="max-width:520px; text-align:center;">
+    <div style="border:2px solid var(--gold); border-radius:12px; padding:34px 24px;">
+      <div style="font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:10px;">Certificate of Completion</div>
+      <h1 style="font-size:24px; margin-bottom:6px;" id="certName">—</h1>
+      <p style="color:var(--text-muted); font-size:13.5px; margin-bottom:18px;">has successfully completed the BridgeStep Mentorship Program</p>
+      <div style="font-size:12px; color:var(--text-muted);" id="certDate">—</div>
+      <div style="margin-top:20px; font-family:'Fraunces',serif; font-size:15px; color:var(--navy);">🌉 BridgeStep Mentorship</div>
+    </div>
+    <div style="display:flex; gap:10px; margin-top:18px;">
+      <button class="btn btn-ghost" style="flex:1;" onclick="document.getElementById('certModal').classList.remove('show')">Close</button>
+      <button class="btn btn-navy" style="flex:1;" onclick="window.print()">Download as PDF</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="platform.js"></script>
+<script>
+const user = Auth.requireAuth(['student']);
+if(user){
+  renderChrome(user, 'student.html');
+
+  const sessions = DB.read('sessions').filter(s=>s.studentId===user.id).sort((a,b)=>new Date(b.start)-new Date(a.start));
+  const upcoming = sessions.filter(s=>s.status==='upcoming');
+  const past = sessions.filter(s=>s.status==='completed');
+  const mentor = DB.read('users').find(u=>u.id===user.mentorId);
+  const resources = DB.read('resources');
+  const announcements = DB.read('announcements');
+
+  const pendingBanner = user.status==='pending' ? `
+    <div class="card" style="border-color:#F0DCA0; background:#FFFBEF; margin-bottom:18px;">
+      <b style="color:var(--amber);">Your account is pending approval.</b>
+      <span style="color:var(--text-muted); font-size:13.5px;"> An admin will review it shortly — you can still explore your dashboard.</span>
+    </div>` : '';
+
+  document.getElementById('content').innerHTML = `
+    ${pendingBanner}
+    <div class="grid grid-4" style="margin-bottom:18px;">
+      <div class="card stat-card"><div class="num">${user.hoursTotal||0}</div><div class="label">Total Mentorship Hours</div></div>
+      <div class="card stat-card"><div class="num">${past.length}</div><div class="label">Sessions Completed</div></div>
+      <div class="card stat-card"><div class="num">${upcoming.length}</div><div class="label">Upcoming Sessions</div></div>
+      <div class="card stat-card"><div class="num">${(user.goals||[]).length}</div><div class="label">Active Goals</div></div>
+    </div>
+
+    <div class="grid grid-2" style="margin-bottom:18px; align-items:start;">
+      <div class="card">
+        <h3>Your Mentor</h3>
+        ${mentor ? `
+          <div class="list-row" style="border:none; padding-top:0;">
+            <div class="who"><div class="avatar">${initials(mentor.name)}</div><div><div style="font-weight:700; font-size:14px;">${mentor.name}</div><div class="meta">${mentor.bio||''}</div></div></div>
+          </div>
+          <a href="#" class="btn btn-ghost btn-sm" onclick="openChat('${mentor.id}'); return false;">Message ${mentor.name.split(' ')[0]}</a>
+        ` : `<div class="empty-state">You haven't been matched with a mentor yet. An admin will match you soon.</div>`}
+      </div>
+      <div class="card">
+        <h3>Learning Hours</h3>
+        <canvas id="hoursChart" height="120"></canvas>
+      </div>
+    </div>
+
+    <div class="grid grid-2" style="margin-bottom:18px; align-items:start;">
+      <div class="card">
+        <h3>Upcoming Sessions</h3>
+        ${upcoming.length? upcoming.map(s=>`
+          <div class="list-row">
+            <div class="who"><div><div style="font-weight:700; font-size:13.5px;">${fmtDate(s.start)}</div><div class="meta">${fmtTime(s.start)} · ${s.durationMinutes} min</div></div></div>
+            <span class="badge upcoming">Upcoming</span>
+          </div>`).join('') : `<div class="empty-state">No upcoming sessions yet.</div>`}
+        <a href="session.html" class="btn btn-gold btn-sm" style="margin-top:14px;">Join Session</a>
+      </div>
+      <div class="card">
+        <h3>Session Notes</h3>
+        ${past.length? past.filter(s=>s.notes).map(s=>`
+          <div class="list-row">
+            <div><div style="font-weight:700; font-size:13.5px;">${fmtDate(s.start)}</div><div class="meta">${s.notes.summary}</div></div>
+          </div>`).join('') : `<div class="empty-state">No session notes yet.</div>`}
+      </div>
+    </div>
+
+    <div class="grid grid-2" style="margin-bottom:18px; align-items:start;">
+      <div class="card">
+        <h3>Progress</h3>
+        ${(user.goals||[]).length ? user.goals.map((g,i)=>`
+          <div style="margin-bottom:14px;">
+            <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:6px;"><span>${g}</span><span style="color:var(--text-muted);">${[35,60,80][i%3]}%</span></div>
+            <div class="progress-track"><div class="progress-fill" style="width:${[35,60,80][i%3]}%;"></div></div>
+          </div>`).join('') : `<div class="empty-state">No goals set yet.</div>`}
+      </div>
+      <div class="card">
+        <h3>Certificate</h3>
+        <p style="color:var(--text-muted); font-size:13.5px; margin-bottom:14px;">Available once you complete ${Math.max(0,8-past.length)} more session${8-past.length===1?'':'s'} (demo threshold: 8).</p>
+        <button class="btn btn-navy btn-sm" ${past.length<8?'disabled style="opacity:.5;cursor:not-allowed;"':''} onclick="showCert()">View Certificate</button>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:18px;">
+      <h3>Resources</h3>
+      ${resources.map(r=>`
+        <div class="list-row">
+          <div class="who"><span style="font-size:18px;">📄</span><div><div style="font-weight:700; font-size:13.5px;">${r.title}</div><div class="meta">${r.type} · ${r.program}</div></div></div>
+          <a href="${r.url}" class="btn btn-ghost btn-sm">Open</a>
+        </div>`).join('')}
+    </div>
+
+    <div class="card">
+      <h3>Announcements</h3>
+      ${announcements.map(a=>`<div class="list-row"><div><div style="font-size:13.5px;">${a.text}</div><div class="meta">${fmtDate(a.date)}</div></div></div>`).join('')}
+    </div>
+  `;
+
+  // Hours chart (demo trend built from completed sessions)
+  const ctx = document.getElementById('hoursChart');
+  const weeks = ['W1','W2','W3','W4','This week'];
+  const hoursSeries = [1,2,1.5,3,(user.hoursTotal||0)%6+1];
+  new Chart(ctx, {
+    type:'bar',
+    data:{ labels:weeks, datasets:[{ label:'Hours', data:hoursSeries, backgroundColor:'#D4AF37', borderRadius:6 }] },
+    options:{ plugins:{legend:{display:false}}, scales:{ y:{ beginAtZero:true, grid:{color:'#F0F1F3'} }, x:{ grid:{display:false} } } }
+  });
+
+  window.showCert = function(){
+    document.getElementById('certName').textContent = user.name;
+    document.getElementById('certDate').textContent = 'Issued ' + fmtDate(nowISO());
+    document.getElementById('certModal').classList.add('show');
+  };
+  window.openChat = function(otherId){ window.location.href = 'resources.html#messages-'+otherId; };
+}
+</script>
+</body>
+</html>

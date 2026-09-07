@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Dashboard | BridgeStep</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="platform.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main">
+    <div class="topbar">
+      <h2>Admin Overview</h2>
+      <div class="topbar-right" id="topbar-right" style="position:relative;"></div>
+    </div>
+    <div class="content" id="content"></div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="platform.js"></script>
+<script>
+const user = Auth.requireAuth(['admin']);
+if(user){
+  renderChrome(user, 'admin.html');
+
+  function data(){
+    const all = DB.read('users');
+    return {
+      all,
+      students: all.filter(u=>u.role==='student'),
+      mentors: all.filter(u=>u.role==='mentor'),
+      pending: all.filter(u=>u.status==='pending'),
+      sessions: DB.read('sessions'),
+      announcements: DB.read('announcements'),
+    };
+  }
+
+  function countryCount(){ return 12; } // demo aggregate — plug real geo data via Firestore later
+
+  function render(){
+    const d = data();
+    const countries = countryCount();
+    const totalHours = d.all.reduce((sum,u)=>sum+(u.hoursTotal||0),0);
+    const completed = d.sessions.filter(s=>s.status==='completed').length;
+
+    document.getElementById('content').innerHTML = `
+      <div class="grid grid-4" style="margin-bottom:18px;">
+        <div class="card stat-card"><div class="num">${d.students.length}</div><div class="label">Students</div><div class="trend">↑ active</div></div>
+        <div class="card stat-card"><div class="num">${d.mentors.length}</div><div class="label">Mentors</div></div>
+        <div class="card stat-card"><div class="num">${completed}</div><div class="label">Sessions Completed</div></div>
+        <div class="card stat-card"><div class="num">${totalHours}</div><div class="label">Total Mentoring Hours</div></div>
+      </div>
+
+      <div class="grid grid-2" style="margin-bottom:18px; align-items:start;">
+        <div class="card"><h3>Growth (demo trend)</h3><canvas id="growthChart" height="130"></canvas></div>
+        <div class="card"><h3>Sessions by Program</h3><canvas id="programChart" height="130"></canvas></div>
+      </div>
+
+      <div class="card" style="margin-bottom:18px;">
+        <h3>Pending Applications ${d.pending.length? `<span class="badge pending">${d.pending.length} pending</span>`:''}</h3>
+        ${d.pending.length ? `<table><thead><tr><th>Name</th><th>Role</th><th>Email</th><th></th></tr></thead><tbody>
+          ${d.pending.map(u=>`<tr>
+            <td>${u.name}</td><td style="text-transform:capitalize;">${u.role}</td><td>${u.email}</td>
+            <td><button class="btn btn-navy btn-sm" onclick="approve('${u.id}')">Approve</button></td>
+          </tr>`).join('')}
+        </tbody></table>` : `<div class="empty-state">No pending applications.</div>`}
+      </div>
+
+      <div class="grid grid-2" style="margin-bottom:18px; align-items:start;">
+        <div class="card">
+          <h3>Students</h3>
+          <table><thead><tr><th>Name</th><th>Mentor</th><th>Status</th></tr></thead><tbody>
+          ${d.students.map(s=>`<tr>
+            <td>${s.name}</td>
+            <td>${matchDropdown(s)}</td>
+            <td><span class="badge ${s.status}">${s.status}</span></td>
+          </tr>`).join('')}
+          </tbody></table>
+        </div>
+        <div class="card">
+          <h3>Mentors</h3>
+          <table><thead><tr><th>Name</th><th>Students</th><th>Status</th></tr></thead><tbody>
+          ${d.mentors.map(m=>`<tr>
+            <td>${m.name}</td>
+            <td>${(m.studentIds||[]).length}</td>
+            <td><span class="badge ${m.status}">${m.status}</span></td>
+          </tr>`).join('')}
+          </tbody></table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Send Announcement</h3>
+        <div class="field"><textarea id="annText" rows="2" placeholder="Write an update for the whole community..."></textarea></div>
+        <button class="btn btn-navy btn-sm" onclick="sendAnnouncement()">Send to Everyone</button>
+        <div style="margin-top:16px;">
+          ${d.announcements.slice().reverse().map(a=>`<div class="list-row"><div><div style="font-size:13.5px;">${a.text}</div><div class="meta">${fmtDate(a.date)}</div></div></div>`).join('')}
+        </div>
+      </div>
+    `;
+
+    new Chart(document.getElementById('growthChart'), {
+      type:'line',
+      data:{ labels:['Jan','Feb','Mar','Apr','May','Jun'], datasets:[{label:'Active users', data:[3,6,9,14,18,d.all.length], borderColor:'#D4AF37', backgroundColor:'rgba(212,175,55,0.12)', fill:true, tension:.35}] },
+      options:{ plugins:{legend:{display:false}}, scales:{ y:{beginAtZero:true, grid:{color:'#F0F1F3'}}, x:{grid:{display:false}} } }
+    });
+    new Chart(document.getElementById('programChart'), {
+      type:'doughnut',
+      data:{ labels:DB.read('programs'), datasets:[{ data:[4,3,2,5,1,2], backgroundColor:['#0A1F3F','#D4AF37','#5C6B7A','#E8CD7A','#1E8E5A','#B8860B'] }] },
+      options:{ plugins:{legend:{position:'bottom', labels:{boxWidth:10,font:{size:10.5}}}} }
+    });
+  }
+
+  function matchDropdown(student){
+    const mentors = data().mentors.filter(m=>m.status==='approved');
+    return `<select onchange="matchMentor('${student.id}', this.value)" style="font-size:12.5px; padding:6px 8px;">
+      <option value="">— Unassigned —</option>
+      ${mentors.map(m=>`<option value="${m.id}" ${student.mentorId===m.id?'selected':''}>${m.name}</option>`).join('')}
+    </select>`;
+  }
+
+  window.matchMentor = function(studentId, mentorId){
+    const all = DB.read('users');
+    const student = all.find(u=>u.id===studentId);
+    if(student.mentorId){
+      const oldMentor = all.find(u=>u.id===student.mentorId);
+      if(oldMentor) oldMentor.studentIds = (oldMentor.studentIds||[]).filter(id=>id!==studentId);
+    }
+    student.mentorId = mentorId || null;
+    if(mentorId){
+      const mentor = all.find(u=>u.id===mentorId);
+      mentor.studentIds = [...new Set([...(mentor.studentIds||[]), studentId])];
+      Notif.add(studentId, `You've been matched with mentor ${mentor.name}.`);
+      Notif.add(mentorId, `You've been matched with student ${student.name}.`);
+    }
+    DB.write('users', all);
+    render();
+  };
+
+  window.approve = function(userId){
+    const all = DB.read('users');
+    const u = all.find(x=>x.id===userId);
+    u.status = 'approved';
+    DB.write('users', all);
+    Notif.add(userId, 'Your BridgeStep account has been approved! 🎉');
+    render();
+  };
+
+  window.sendAnnouncement = function(){
+    const text = document.getElementById('annText').value.trim();
+    if(!text) return;
+    const all = DB.read('announcements');
+    all.push({id:uid('an'), text, audience:'all', date:nowISO()});
+    DB.write('announcements', all);
+    DB.read('users').filter(u=>u.role!=='admin').forEach(u=>Notif.add(u.id, 'New announcement from BridgeStep.'));
+    render();
+  };
+
+  render();
+}
+</script>
+</body>
+</html>

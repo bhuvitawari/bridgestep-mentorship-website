@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BridgeStep Mentorship | Free Global Student Mentorship</title>
+<meta name="description" content="BridgeStep Mentorship is a student-led nonprofit providing free, structured mentorship in STEM, research, college applications, leadership, and English for students worldwide.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#0A1F3F; --gold:#D4AF37; --gold-soft:#E8CD7A;
+    --white:#FFFFFF; --light-gray:#F8F9FA; --text:#2C3E50; --text-muted:#5C6B7A;
+    --border:#E4E8ED; --radius:10px; --maxw:1080px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html{scroll-behavior:smooth;}
+  body{font-family:'Inter',sans-serif; color:var(--text); background:var(--white); line-height:1.6;}
+  a{color:inherit; text-decoration:none;}
+  ul{list-style:none;}
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 28px;}
+  h1,h2,h3{font-family:'Fraunces',serif; font-weight:600; letter-spacing:-0.01em; color:var(--navy);}
+  .eyebrow{font-weight:700; font-size:11.5px; letter-spacing:0.16em; text-transform:uppercase; color:var(--gold); margin-bottom:14px; display:flex; align-items:center; gap:10px;}
+  .eyebrow::before{content:""; width:20px; height:2px; background:var(--gold); display:inline-block;}
+  .btn{display:inline-flex; align-items:center; justify-content:center; padding:15px 30px; border-radius:8px; font-weight:700; font-size:15px; cursor:pointer; border:2px solid transparent; transition:.15s;}
+  .btn-gold{background:var(--gold); color:var(--navy); box-shadow:0 6px 18px rgba(212,175,55,0.28);}
+  .btn-gold:hover{background:var(--gold-soft); box-shadow:0 8px 22px rgba(212,175,55,0.36);}
+  .btn-outline{border-color:rgba(255,255,255,0.35); color:#fff;}
+  .btn-outline:hover{border-color:#fff;}
+  .btn-navy{background:var(--navy); color:#fff;}
+  .btn-ghost{border-color:var(--border); color:var(--navy);}
+  .btn-ghost:hover{border-color:var(--navy);}
+  section{padding:80px 0;}
+  .section-head{max-width:600px; margin-bottom:44px;}
+  .section-head p{color:var(--text-muted); font-size:16px; margin-top:12px;}
+  .center{text-align:center; margin-left:auto; margin-right:auto;}
+
+  header{position:sticky; top:0; z-index:100; background:rgba(255,255,255,0.95); border-bottom:1px solid var(--border);}
+  nav{display:flex; align-items:center; justify-content:space-between; padding:16px 28px; max-width:var(--maxw); margin:0 auto;}
+  .logo{display:flex; align-items:center; gap:9px; font-weight:800; font-size:18px; color:var(--navy);}
+  .nav-links{display:flex; gap:28px; font-weight:600; font-size:14px;}
+  .nav-links a:hover{color:var(--gold);}
+  .nav-cta{display:flex; gap:10px; align-items:center;}
+  .nav-cta a.small-link{font-size:12.5px; color:var(--text-muted); font-weight:600;}
+  .nav-cta .btn{padding:10px 18px; font-size:13px;}
+
+  .hero{background:linear-gradient(160deg, var(--navy) 0%, #0D2547 45%, #05131F 100%); color:#fff; padding:90px 0 70px; position:relative; overflow:hidden;}
+  .hero-inner{max-width:640px;}
+  .hero h1{color:#fff; font-size:clamp(32px,4.6vw,50px); line-height:1.12; margin-bottom:18px;}
+  .hero h1 em{font-style:normal; color:var(--gold);}
+  .hero p{font-size:16.5px; color:rgba(255,255,255,0.78); max-width:520px; margin-bottom:28px;}
+  .hero-cta{display:flex; flex-direction:column; align-items:flex-start; gap:8px;}
+  .hero-cta .btn{font-size:15.5px; padding:16px 32px;}
+  .hero-cta .safety{font-size:12px; color:rgba(255,255,255,0.5);}
+  .hero-cta .alt-link{font-size:13px; color:rgba(255,255,255,0.7); text-decoration:underline; margin-top:10px;}
+  .hero-arc{position:absolute; right:-20px; bottom:-30px; width:260px; opacity:0.5;}
+
+  .free-badge-row{display:flex; justify-content:center; padding:16px 28px;}
+  .free-badge{background:var(--light-gray); color:var(--navy); font-weight:700; font-size:12.5px; padding:8px 16px; border-radius:20px; border:1px solid var(--border);}
+
+  .about-grid{display:grid; grid-template-columns:1fr 1fr; gap:56px;}
+  .about-grid p{color:var(--text-muted); font-size:15px; margin-bottom:14px;}
+  .value-list{display:flex; flex-direction:column; gap:16px;}
+  .value-item{display:flex; gap:14px;}
+  .value-dot{width:7px; height:7px; border-radius:50%; background:var(--gold); margin-top:8px; flex-shrink:0;}
+  .value-item h4{font-size:15px; margin-bottom:2px;}
+  .value-item p{color:var(--text-muted); font-size:13.5px; margin:0;}
+
+  .split{display:grid; grid-template-columns:1fr 1fr; gap:56px; align-items:center;}
+  .split.reverse .split-visual{order:2;}
+  .split-visual{background:var(--light-gray); border-radius:14px; padding:34px; min-height:280px; display:flex; flex-direction:column; justify-content:center;}
+  .check-list{display:flex; flex-direction:column; gap:12px;}
+  .check-item{display:flex; align-items:flex-start; gap:12px; background:#fff; padding:14px 16px; border-radius:8px; border:1px solid var(--border);}
+  .check-icon{width:20px; height:20px; border-radius:6px; background:var(--gold); color:var(--navy); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:12px; flex-shrink:0;}
+  .check-item span{font-size:14px; font-weight:500;}
+  .split-content h2{font-size:28px; margin-bottom:14px;}
+  .split-content > p{color:var(--text-muted); margin-bottom:20px; font-size:15px;}
+  .mini-faq{margin-top:26px; display:flex; flex-direction:column; gap:10px;}
+  .mini-faq details{border-bottom:1px solid var(--border); padding-bottom:12px;}
+  .mini-faq summary{cursor:pointer; font-weight:700; font-size:14.5px; color:var(--navy); list-style:none; display:flex; justify-content:space-between;}
+  .mini-faq summary::after{content:"+"; color:var(--gold); font-size:19px; font-weight:400;}
+  .mini-faq details[open] summary::after{content:"–";}
+  .mini-faq p{color:var(--text-muted); font-size:13.5px; margin-top:8px;}
+
+  /* PROGRAM (single) */
+  .program-box{background:var(--light-gray); border-radius:16px; padding:44px; border:1px solid var(--border); box-shadow:0 20px 44px rgba(10,31,63,0.05);}
+  .program-box h2{font-size:26px; margin-bottom:10px;}
+  .program-box > p{color:var(--text-muted); font-size:15px; margin-bottom:28px; max-width:560px;}
+  .track-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:28px;}
+  .track-chip{background:#fff; border:1px solid var(--border); border-radius:8px; padding:14px 16px; font-size:13.5px; font-weight:600; color:var(--navy);}
+  .program-steps{display:flex; flex-direction:column; gap:14px; margin-bottom:30px;}
+  .program-step{display:flex; gap:14px; align-items:flex-start;}
+  .program-step .num{width:26px; height:26px; border-radius:50%; background:var(--navy); color:var(--gold); font-weight:800; font-size:12.5px; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+  .program-step p{font-size:14px; color:var(--text-muted); margin:0;}
+  .program-step b{color:var(--navy);}
+
+  .guide-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:20px;}
+  .guide-card{border:1px solid var(--border); border-radius:var(--radius); padding:26px; display:flex; flex-direction:column; transition:.18s; background:#fff;}
+  .guide-card:hover{box-shadow:0 14px 30px rgba(10,31,63,0.08); border-color:transparent; transform:translateY(-2px);}
+  .guide-icon{width:40px; height:40px; border-radius:9px; background:var(--navy); color:var(--gold); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:16px; margin-bottom:14px;}
+  .guide-card h3{font-size:16px; margin-bottom:6px;}
+  .guide-card p{color:var(--text-muted); font-size:13px; margin-bottom:16px; flex-grow:1;}
+
+  .contact-grid{display:grid; grid-template-columns:1fr 1fr; gap:56px;}
+  .form-field{margin-bottom:16px;}
+  .form-field label{display:block; font-weight:600; font-size:13px; margin-bottom:6px; color:var(--navy);}
+  .form-field input, .form-field textarea{width:100%; border:1px solid var(--border); border-radius:8px; padding:12px 14px; font-family:'Inter'; font-size:14px;}
+  .contact-info-item{display:flex; gap:14px; margin-bottom:22px;}
+  .contact-info-icon{width:40px; height:40px; border-radius:9px; background:var(--light-gray); color:var(--navy); display:flex; align-items:center; justify-content:center; font-weight:700; flex-shrink:0; font-size:13px;}
+  .contact-info-item h4{font-size:14px; margin-bottom:2px;}
+  .contact-info-item a{font-size:13.5px; color:var(--text-muted);}
+  .contact-info-item a:hover{color:var(--gold);}
+
+  footer{background:#071427; color:rgba(255,255,255,0.65); padding:44px 0 22px;}
+  .footer-row{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; font-size:13px;}
+  .footer-logo{display:flex; align-items:center; gap:8px; font-weight:800; font-size:15px; color:#fff;}
+  .footer-links{display:flex; gap:20px; font-size:13px;}
+  .footer-links a:hover{color:var(--gold);}
+
+  @media (max-width: 860px){
+    .nav-links{display:none;}
+    .about-grid, .split, .split.reverse .split-visual, .track-grid, .guide-grid, .contact-grid{grid-template-columns:1fr !important; order:initial !important;}
+    section{padding:56px 0;}
+    .program-box{padding:28px;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <nav>
+    <a href="#home" class="logo">
+      <svg width="26" height="22" viewBox="0 0 30 26" fill="none">
+        <path d="M2 22 Q15 2 28 22" stroke="#D4AF37" stroke-width="3.2" stroke-linecap="round"/>
+        <circle cx="3" cy="22" r="2.6" fill="#0A1F3F"/>
+        <circle cx="27" cy="22" r="2.6" fill="#0A1F3F"/>
+      </svg>
+      BridgeStep
+    </a>
+    <ul class="nav-links">
+      <li><a href="#about">About</a></li>
+      <li><a href="#program">The Program</a></li>
+      <li><a href="#guidebooks">Guidebooks</a></li>
+      <li><a href="#contact">Contact</a></li>
+    </ul>
+    <div class="nav-cta">
+      <a href="#mentors" class="small-link">For Mentors</a>
+      <a href="login.html" class="small-link">Log In</a>
+      <a href="https://www.cognitoforms.com/hmh5/bridgestepmentorshipstudentsignup" class="btn btn-gold">Apply as a Student</a>
+    </div>
+  </nav>
+</header>
+
+<section id="home" class="hero">
+  <div class="wrap hero-inner">
+    <div class="eyebrow" style="color:var(--gold);">Free · Weekly · Student-Led</div>
+    <h1>You have the ambition. <em>We provide the mentor.</em></h1>
+    <p>Free, weekly, 1-on-1 mentorship — matched to whatever you need help with, from English to college applications.</p>
+    <div class="hero-cta">
+      <a href="https://www.cognitoforms.com/hmh5/bridgestepmentorshipstudentsignup" class="btn btn-gold">Apply as a Student</a>
+      <span class="safety">No spam. No fees. Just structured mentorship.</span>
+      <a href="#mentors" class="alt-link">Looking to mentor instead? →</a>
+    </div>
+  </div>
+  <svg class="hero-arc" viewBox="0 0 340 160" fill="none">
+    <path d="M20,140 Q170,-20 320,140" stroke="#D4AF37" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="20" cy="140" r="7" fill="#D4AF37"/><circle cx="320" cy="140" r="7" fill="#D4AF37"/>
+  </svg>
+</section>
+
+<div class="free-badge-row">
+  <span class="free-badge">🔒 100% Free, Forever</span>
+</div>
+
+<!-- ABOUT -->
+<section id="about">
+  <div class="wrap">
+    <div class="section-head center">
+      <div class="eyebrow" style="justify-content:center;">About</div>
+      <h2 style="font-size:28px;">Why BridgeStep exists</h2>
+    </div>
+    <div class="about-grid">
+      <div>
+        <p>In many places, students lean on costly private tutoring to make up for gaps in school resources — a solution that isn't available to everyone. BridgeStep offers something different: free, consistent, near-peer mentorship, open to any student who needs it.</p>
+        <p><b style="color:var(--navy);">Mission:</b> Connect students with near-peer mentors for consistent, goal-driven conversations that build confidence, skills, and a real path forward.</p>
+      </div>
+      <div class="value-list">
+        <div class="value-item"><div class="value-dot"></div><div><h4>Access Without Cost</h4><p>Free, always — no exceptions.</p></div></div>
+        <div class="value-item"><div class="value-dot"></div><div><h4>Near-Peer Trust</h4><p>Mentors close in age build real relatability.</p></div></div>
+        <div class="value-item"><div class="value-dot"></div><div><h4>Safety First</h4><p>Every relationship follows a clear Code of Conduct.</p></div></div>
+        <div class="value-item"><div class="value-dot"></div><div><h4>Consistency</h4><p>Regular weekly contact over one-off sessions.</p></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- THE PROGRAM -->
+<section id="program" style="background:var(--light-gray);">
+  <div class="wrap">
+    <div class="program-box">
+      <div class="eyebrow">The Program</div>
+      <h2>One program. Whatever you need help with.</h2>
+      <p>BridgeStep runs a single, flexible mentorship program. You tell us what you want support with — we match you with a mentor built around that.</p>
+
+      <div class="track-grid">
+        <div class="track-chip">English Conversation</div>
+        <div class="track-chip">STEM Exploration</div>
+        <div class="track-chip">Research Skills</div>
+        <div class="track-chip">College Applications</div>
+        <div class="track-chip">Leadership</div>
+        <div class="track-chip">General Life Advice</div>
+      </div>
+
+      <div class="program-steps">
+        <div class="program-step"><div class="num">1</div><p><b>Tell us what you need.</b> Pick one or more areas above when you apply.</p></div>
+        <div class="program-step"><div class="num">2</div><p><b>We match you with a mentor</b> whose background fits what you're looking for.</p></div>
+        <div class="program-step"><div class="num">3</div><p><b>Weekly 1:1 sessions</b>, structured around goals you and your mentor set together.</p></div>
+        <div class="program-step"><div class="num">4</div><p><b>Ongoing, flexible</b> — the program continues for as long as it's useful to you.</p></div>
+      </div>
+
+      <a href="https://www.cognitoforms.com/hmh5/bridgestepmentorshipstudentsignup" class="btn btn-navy">Apply as a Student</a>
+    </div>
+  </div>
+</section>
+
+<!-- FOR STUDENTS -->
+<section id="students">
+  <div class="wrap split">
+    <div class="split-content">
+      <div class="eyebrow">For Students</div>
+      <h2>A mentor in your corner, at no cost</h2>
+      <p>Whether it's English, STEM, college applications, or just having someone consistent to talk to — you're matched with a near-peer mentor who gets it.</p>
+      <div class="mini-faq">
+        <details open><summary>Who can apply?</summary><p>Any student, anywhere in the world, who wants consistent mentorship support.</p></details>
+        <details><summary>How much does it cost?</summary><p>Nothing. BridgeStep is completely free, always.</p></details>
+      </div>
+      <a href="https://www.cognitoforms.com/hmh5/bridgestepmentorshipstudentsignup" class="btn btn-navy" style="margin-top:24px;">Apply as a Student</a>
+    </div>
+    <div class="split-visual">
+      <div class="check-list">
+        <div class="check-item"><div class="check-icon">✓</div><span>Free, one-on-one mentorship — always</span></div>
+        <div class="check-item"><div class="check-icon">✓</div><span>Matched to whatever you need help with</span></div>
+        <div class="check-item"><div class="check-icon">✓</div><span>Safe, structured, and consistent</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOR MENTORS -->
+<section id="mentors" style="background:var(--light-gray);">
+  <div class="wrap split reverse">
+    <div class="split-visual">
+      <div class="check-list">
+        <div class="check-item"><div class="check-icon">✓</div><span>Just 1 hour a week</span></div>
+        <div class="check-item"><div class="check-icon">✓</div><span>No teaching experience required</span></div>
+        <div class="check-item"><div class="check-icon">✓</div><span>Guidance and resources provided</span></div>
+      </div>
+    </div>
+    <div class="split-content">
+      <div class="eyebrow">For Mentors</div>
+      <h2>Be the mentor you wish you had</h2>
+      <p>Show up consistently, keep sessions focused on your student's goals, and communicate only through approved platforms. That's it.</p>
+      <a href="https://www.cognitoforms.com/hmh5/bridgestepmentorshipmentorapplication" class="btn btn-navy" style="margin-top:24px;">Apply as a Mentor</a>
+    </div>
+  </div>
+</section>
+
+<!-- GUIDEBOOKS -->
+<section id="guidebooks">
+  <div class="wrap">
+    <div class="section-head center">
+      <div class="eyebrow" style="justify-content:center;">Guidebooks</div>
+      <h2 style="font-size:28px;">Everything written down, clearly</h2>
+    </div>
+    <div class="guide-grid">
+      <div class="guide-card">
+        <div class="guide-icon">🎓</div>
+        <h3>Student Guidebook</h3>
+        <p>Your journey, your responsibilities, and your safety.</p>
+        <a href="https://docs.google.com/document/d/1lZ-BpHzHVkGCPmo1rAlic48qTEajVFvWDn6HQJEYGpY/view" target="_blank" class="btn btn-ghost">Read the Guide</a>
+      </div>
+      <div class="guide-card">
+        <div class="guide-icon">🌟</div>
+        <h3>Mentor Guidebook</h3>
+        <p>Expectations, safeguarding, and mentoring tips.</p>
+        <a href="https://docs.google.com/document/d/1e7hhmi9_30HyA-8mU8jnCNA9GXfk3ZEGVGMsxHkCka4/view" target="_blank" class="btn btn-ghost">Read the Guide</a>
+      </div>
+      <div class="guide-card">
+        <div class="guide-icon">🤝</div>
+        <h3>Community Guidebook</h3>
+        <p>New here? An overview of who we are.</p>
+        <a href="https://docs.google.com/document/d/1moLmC6fcZS_al_Kdq4hgfuLfmpahMIn7XRa6TF8GJE8/view" target="_blank" class="btn btn-ghost">Read the Guide</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CONTACT -->
+<section id="contact" style="background:var(--light-gray);">
+  <div class="wrap">
+    <div class="section-head center">
+      <div class="eyebrow" style="justify-content:center;">Contact</div>
+      <h2 style="font-size:28px;">Get in touch</h2>
+    </div>
+    <div class="contact-grid">
+      <div>
+        <div class="contact-info-item"><div class="contact-info-icon">✉</div><div><h4>Email</h4><a href="mailto:bridgestep.mentorship@gmail.com">bridgestep.mentorship@gmail.com</a></div></div>
+        <div class="contact-info-item"><div class="contact-info-icon">IG</div><div><h4>Instagram</h4><a href="https://instagram.com/bridge_step_mentorship" target="_blank">@bridge_step_mentorship</a></div></div>
+        <div class="contact-info-item"><div class="contact-info-icon">in</div><div><h4>LinkedIn</h4><a href="https://www.linkedin.com/company/142892609" target="_blank">BridgeStep Mentorship</a></div></div>
+      </div>
+      <form onsubmit="event.preventDefault(); alert('Thanks — we will get back to you within 48 hours.');">
+        <div class="form-field"><label>Name</label><input type="text" placeholder="Your name" required></div>
+        <div class="form-field"><label>Email</label><input type="email" placeholder="you@example.com" required></div>
+        <div class="form-field"><label>Message</label><textarea rows="4" placeholder="How can we help?" required></textarea></div>
+        <button type="submit" class="btn btn-navy" style="width:100%;">Send Message</button>
+      </form>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap footer-row">
+    <div class="footer-logo">🌉 BridgeStep Mentorship</div>
+    <div class="footer-links">
+      <a href="#about">About</a>
+      <a href="#program">Program</a>
+      <a href="#contact">Contact</a>
+    </div>
+    <span>© 2026 BridgeStep Mentorship</span>
+  </div>
+</footer>
+
+</body>
+</html>

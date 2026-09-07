@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign Up | BridgeStep Mentorship</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="platform.css">
+</head>
+<body>
+
+<div class="auth-shell">
+  <div class="auth-card">
+    <a href="index.html" class="auth-logo">🌉 BridgeStep</a>
+    <h1>Create your account</h1>
+    <p class="auth-sub">Join as a student or a mentor.</p>
+
+    <div id="msg" class="msg error"></div>
+
+    <div class="role-picker">
+      <div class="role-opt active" data-role="student">Student</div>
+      <div class="role-opt" data-role="mentor">Mentor</div>
+      <div class="role-opt" data-role="admin">Admin</div>
+    </div>
+
+    <form id="signupForm">
+      <div class="field"><label>Full name</label><input type="text" id="name" required placeholder="Your name"></div>
+      <div class="field"><label>Email</label><input type="email" id="email" required placeholder="you@example.com"></div>
+      <div class="field"><label>Password</label><input type="password" id="password" required minlength="6" placeholder="At least 6 characters"></div>
+      <button class="btn btn-gold" type="submit" style="width:100%;">Create Account</button>
+    </form>
+
+    <p class="auth-switch">Already have an account? <a href="login.html">Log in</a></p>
+
+    <div class="demo-note">Student and mentor accounts start as <b>pending</b> until an admin approves them — you'll still be able to see your dashboard with a pending banner.</div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="platform.js"></script>
+<script>
+  let selectedRole = 'student';
+  document.querySelectorAll('.role-opt').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      document.querySelectorAll('.role-opt').forEach(x=>x.classList.remove('active'));
+      el.classList.add('active');
+      selectedRole = el.dataset.role;
+    });
+  });
+
+  document.getElementById('signupForm').addEventListener('submit', function(e){
+    e.preventDefault();
+    const data = {
+      name: document.getElementById('name').value.trim(),
+      email: document.getElementById('email').value.trim(),
+      password: document.getElementById('password').value,
+      role: selectedRole,
+    };
+    const msg = document.getElementById('msg');
+    Auth.signup(data).then(user=>{
+      window.location.href = user.role + '.html';
+    }).catch(err=>{
+      msg.textContent = err.message || 'Something went wrong.';
+      msg.classList.add('show');
+    });
+  });
+</script>
+</body>
+</html>

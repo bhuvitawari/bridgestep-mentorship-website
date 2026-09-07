@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mentor Dashboard | BridgeStep</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="platform.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="main">
+    <div class="topbar">
+      <h2>Dashboard</h2>
+      <div class="topbar-right" id="topbar-right" style="position:relative;"></div>
+    </div>
+    <div class="content" id="content"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="notesModal">
+  <div class="modal-box">
+    <h3>Session Notes</h3>
+    <div class="field"><label>Summary</label><textarea id="noteSummary" rows="2"></textarea></div>
+    <div class="field"><label>Homework</label><textarea id="noteHomework" rows="2"></textarea></div>
+    <div class="field"><label>Next Goals</label><textarea id="noteGoals" rows="2"></textarea></div>
+    <div class="field"><label>Feedback</label><textarea id="noteFeedback" rows="2"></textarea></div>
+    <div style="display:flex; gap:10px;">
+      <button class="btn btn-ghost" style="flex:1;" onclick="document.getElementById('notesModal').classList.remove('show')">Cancel</button>
+      <button class="btn btn-navy" style="flex:1;" id="saveNotesBtn">Save Notes</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="platform.js"></script>
+<script>
+const user = Auth.requireAuth(['mentor']);
+if(user){
+  renderChrome(user, 'mentor.html');
+
+  const allUsers = DB.read('users');
+  const myStudents = allUsers.filter(u=>(user.studentIds||[]).includes(u.id));
+  const sessions = DB.read('sessions').filter(s=>s.mentorId===user.id).sort((a,b)=>new Date(b.start)-new Date(a.start));
+  const upcoming = sessions.filter(s=>s.status==='upcoming');
+  const past = sessions.filter(s=>s.status==='completed');
+
+  function render(){
+    document.getElementById('content').innerHTML = `
+      <div class="grid grid-4" style="margin-bottom:18px;">
+        <div class="card stat-card"><div class="num">${myStudents.length}</div><div class="label">Assigned Students</div></div>
+        <div class="card stat-card"><div class="num">${user.hoursTotal||0}</div><div class="label">Total Mentoring Hours</div></div>
+        <div class="card stat-card"><div class="num">${past.length}</div><div class="label">Sessions Completed</div></div>
+        <div class="card stat-card"><div class="num">${upcoming.length}</div><div class="label">Upcoming Sessions</div></div>
+      </div>
+
+      <div class="card" style="margin-bottom:18px;">
+        <h3>Your Students</h3>
+        ${myStudents.length? myStudents.map(s=>`
+          <div class="list-row">
+            <div class="who"><div class="avatar">${initials(s.name)}</div><div><div style="font-weight:700; font-size:13.5px;">${s.name}</div><div class="meta">Goals: ${(s.goals||[]).join(', ')||'—'}</div></div></div>
+            <span class="badge ${s.status}">${s.status}</span>
+          </div>`).join('') : `<div class="empty-state">No students assigned yet — an admin will match you soon.</div>`}
+      </div>
+
+      <div class="grid grid-2" style="align-items:start;">
+        <div class="card">
+          <h3>Upcoming Sessions</h3>
+          ${upcoming.length? upcoming.map(s=>{
+            const st = allUsers.find(u=>u.id===s.studentId);
+            return `<div class="list-row">
+              <div class="who"><div><div style="font-weight:700; font-size:13.5px;">${st?st.name:'Student'}</div><div class="meta">${fmtDate(s.start)} · ${fmtTime(s.start)}</div></div></div>
+              <span class="badge upcoming">Upcoming</span>
+            </div>`;
+          }).join('') : `<div class="empty-state">No upcoming sessions.</div>`}
+          <a href="session.html" class="btn btn-gold btn-sm" style="margin-top:14px;">Start Session</a>
+        </div>
+        <div class="card">
+          <h3>Session History</h3>
+          ${past.length? past.map(s=>{
+            const st = allUsers.find(u=>u.id===s.studentId);
+            return `<div class="list-row">
+              <div class="who"><div><div style="font-weight:700; font-size:13.5px;">${st?st.name:'Student'}</div><div class="meta">${fmtDate(s.start)} · ${s.durationMinutes} min</div></div></div>
+              <button class="btn btn-ghost btn-sm" onclick="editNotes('${s.id}')">${s.notes?'Edit Notes':'Add Notes'}</button>
+            </div>`;
+          }).join('') : `<div class="empty-state">No completed sessions yet.</div>`}
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:18px;">
+        <h3>Upload a Resource</h3>
+        <div class="grid grid-2">
+          <div class="field"><label>Title</label><input id="resTitle" placeholder="e.g. Study Planner Template"></div>
+          <div class="field"><label>Program</label>
+            <select id="resProgram">${DB.read('programs').map(p=>`<option>${p}</option>`).join('')}</select>
+          </div>
+        </div>
+        <button class="btn btn-navy btn-sm" onclick="addResource()">Add Resource</button>
+      </div>
+    `;
+  }
+  render();
+
+  let activeSessionId = null;
+  window.editNotes = function(sessionId){
+    activeSessionId = sessionId;
+    const s = sessions.find(x=>x.id===sessionId);
+    document.getElementById('noteSummary').value = s.notes?.summary||'';
+    document.getElementById('noteHomework').value = s.notes?.homework||'';
+    document.getElementById('noteGoals').value = s.notes?.nextGoals||'';
+    document.getElementById('noteFeedback').value = s.notes?.feedback||'';
+    document.getElementById('notesModal').classList.add('show');
+  };
+  document.getElementById('saveNotesBtn').addEventListener('click', ()=>{
+    const all = DB.read('sessions');
+    const idx = all.findIndex(x=>x.id===activeSessionId);
+    all[idx].notes = {
+      summary: document.getElementById('noteSummary').value,
+      homework: document.getElementById('noteHomework').value,
+      nextGoals: document.getElementById('noteGoals').value,
+      feedback: document.getElementById('noteFeedback').value,
+    };
+    DB.write('sessions', all);
+    const st = allUsers.find(u=>u.id===all[idx].studentId);
+    if(st) Notif.add(st.id, `${user.name} added notes to your last session.`);
+    document.getElementById('notesModal').classList.remove('show');
+    location.reload();
+  });
+
+  window.addResource = function(){
+    const title = document.getElementById('resTitle').value.trim();
+    if(!title) return;
+    const all = DB.read('resources');
+    all.push({id:uid('res'), title, type:'Link', url:'#', uploadedBy:user.id, program:document.getElementById('resProgram').value});
+    DB.write('resources', all);
+    myStudents.forEach(s=>Notif.add(s.id, `New resource added: ${title}.`));
+    document.getElementById('resTitle').value='';
+    alert('Resource added — your students will see it in their Resources tab.');
+  };
+}
+</script>
+</body>
+</html>
