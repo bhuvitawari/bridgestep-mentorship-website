@@ -8,12 +8,13 @@
    ============================================================ */
 
 const firebaseConfig = {
-  apiKey: "",              // <-- paste from Firebase Console > Project settings
-  authDomain: "",
-  projectId: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  appId: ""
+  apiKey: "AIzaSyDSUhzjJMKcvzq5Oyuf1vh9Bs0rGFvT68c",
+  authDomain: "bridgestep-mentorship-website.firebaseapp.com",
+  projectId: "bridgestep-mentorship-website",
+  storageBucket: "bridgestep-mentorship-website.firebasestorage.app",
+  messagingSenderId: "71500992177",
+  appId: "1:71500992177:web:46290fa57f129b1331dc90",
+  measurementId: "G-RB3XTCDQPS"
 };
 
 // Do not edit below this line.
