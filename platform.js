@@ -9,9 +9,30 @@
 
 const DB_KEYS = ['users','sessions','resources','messages','notifications','announcements','programs'];
 
+const db = firebase.firestore();
+
 const DB = {
-  read(key){ try{ return JSON.parse(localStorage.getItem('bs_'+key)) || []; }catch(e){ return []; } },
-  write(key, val){ localStorage.setItem('bs_'+key, JSON.stringify(val)); },
+  async read(collectionName) {
+    try {
+      const snapshot = await db.collection(collectionName).get();
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (e) {
+      console.error("Error reading collection:", e);
+      return [];
+    }
+  },
+  async write(collectionName, dataArray) {
+    try {
+      const batch = db.batch();
+      dataArray.forEach(item => {
+        const ref = db.collection(collectionName).doc(item.id);
+        batch.set(ref, item, { merge: true });
+      });
+      await batch.commit();
+    } catch (e) {
+      console.error("Error writing collection:", e);
+    }
+  }
 };
 
 function uid(prefix){ return prefix + '_' + Math.random().toString(36).slice(2,9); }
