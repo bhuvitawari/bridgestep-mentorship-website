@@ -42,53 +42,39 @@ function fmtTime(iso){ const d=new Date(iso); return d.toLocaleTimeString(undefi
 function initials(name){ return name.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase(); }
 
 /* ---------------- Seed demo data (only runs once) ---------------- */
-function seedIfEmpty(){
-  if(DB.read('users').length) return;
+/* ---------------- Seed demo data (only runs once) ---------------- */
+async function seedIfEmpty(){
+  if(!window.USE_FIREBASE) return;
+  const db = firebase.firestore();
+  
+  // Check if users collection already has data
+  const snapshot = await db.collection('users').get();
+  if(!snapshot.empty) return;
 
-  const users = [
-    {id:'admin_1', name:'Bhuvi (Admin)', email:'admin@bridgestep.org', password:'admin123', role:'admin', status:'approved', joinDate:nowISO()},
-    {id:'mentor_1', name:'Layla Haddad', email:'layla.mentor@bridgestep.org', password:'mentor123', role:'mentor', status:'approved', bio:'CS student, mentors in STEM & College Apps.', studentIds:['student_1','student_2'], hoursTotal:18, joinDate:nowISO()},
-    {id:'mentor_2', name:'Omar Fakih', email:'omar.mentor@bridgestep.org', password:'mentor123', role:'mentor', status:'approved', bio:'Mentors in English & Leadership.', studentIds:['student_3'], hoursTotal:9, joinDate:nowISO()},
-    {id:'student_1', name:'Sara Youssef', email:'sara.student@bridgestep.org', password:'student123', role:'student', status:'approved', mentorId:'mentor_1', goals:['Improve research writing','Prep for college essays'], hoursTotal:6, joinDate:nowISO()},
-    {id:'student_2', name:'Karim Aziz', email:'karim.student@bridgestep.org', password:'student123', role:'student', status:'approved', mentorId:'mentor_1', goals:['STEM fundamentals'], hoursTotal:4, joinDate:nowISO()},
-    {id:'student_3', name:'Nour Saleh', email:'nour.student@bridgestep.org', password:'student123', role:'student', status:'pending', mentorId:null, goals:['English conversation practice'], hoursTotal:0, joinDate:nowISO()},
-  ];
-  DB.write('users', users);
+  console.log("Seeding initial database content...");
 
-  const t = Date.now();
-  const day = 86400000;
-  const sessions = [
-    {id:uid('sess'), studentId:'student_1', mentorId:'mentor_1', start:new Date(t+2*day).toISOString(), status:'upcoming', durationMinutes:60, notes:null, attendance:{}},
-    {id:uid('sess'), studentId:'student_2', mentorId:'mentor_1', start:new Date(t+3*day).toISOString(), status:'upcoming', durationMinutes:60, notes:null, attendance:{}},
-    {id:uid('sess'), studentId:'student_1', mentorId:'mentor_1', start:new Date(t-3*day).toISOString(), status:'completed', durationMinutes:55, notes:{summary:'Reviewed college essay draft #1.', homework:'Revise intro paragraph.', nextGoals:'Tackle essay #2.', feedback:'Great engagement today.'}, attendance:{student:true,mentor:true}},
-    {id:uid('sess'), studentId:'student_2', mentorId:'mentor_1', start:new Date(t-6*day).toISOString(), status:'completed', durationMinutes:50, notes:{summary:'Algebra fundamentals.', homework:'Practice set 3.', nextGoals:'Move to geometry.', feedback:'Solid progress.'}, attendance:{student:true,mentor:true}},
-  ];
-  DB.write('sessions', sessions);
+  // Seed default programs
+  const programs = ['English Conversation','STEM Exploration','Research Skills','College Applications','Leadership','General Life Advice'];
+  for(const p of programs){
+    await db.collection('programs').add({ name: p });
+  }
 
+  // Seed default announcements
+  await db.collection('announcements').add({
+    text: 'Welcome to the new BridgeStep platform! Explore your dashboard and let us know what you think.',
+    audience: 'all',
+    date: nowISO()
+  });
+
+  // Seed sample resources
   const resources = [
-    {id:uid('res'), title:'College Essay Starter Guide', type:'PDF', url:'#', uploadedBy:'mentor_1', program:'College Applications'},
-    {id:uid('res'), title:'STEM Study Habits Slides', type:'Slides', url:'#', uploadedBy:'mentor_1', program:'STEM Exploration'},
-    {id:uid('res'), title:'English Conversation Starters', type:'Worksheet', url:'#', uploadedBy:'mentor_2', program:'English Conversation'},
+    { title:'College Essay Starter Guide', type:'PDF', url:'#', uploadedBy:'admin', program:'College Applications' },
+    { title:'STEM Study Habits Slides', type:'Slides', url:'#', uploadedBy:'admin', program:'STEM Exploration' },
+    { title:'English Conversation Starters', type:'Worksheet', url:'#', uploadedBy:'admin', program:'English Conversation' }
   ];
-  DB.write('resources', resources);
-
-  DB.write('messages', [
-    {id:uid('msg'), from:'mentor_1', to:'student_1', text:'Looking forward to our session Thursday!', ts:new Date(t-day).toISOString()},
-    {id:uid('msg'), from:'student_1', to:'mentor_1', text:'Me too — I finished the homework 🎉', ts:new Date(t-day+3600000).toISOString()},
-  ]);
-
-  DB.write('notifications', [
-    {id:uid('n'), userId:'student_1', text:'Upcoming session with Layla Haddad in 2 days.', read:false, ts:nowISO()},
-    {id:uid('n'), userId:'student_1', text:'New resource added: College Essay Starter Guide.', read:false, ts:nowISO()},
-    {id:uid('n'), userId:'mentor_1', text:'Sara Youssef completed her homework.', read:false, ts:nowISO()},
-    {id:uid('n'), userId:'admin_1', text:'New student application pending approval: Nour Saleh.', read:false, ts:nowISO()},
-  ]);
-
-  DB.write('announcements', [
-    {id:uid('an'), text:'Welcome to the new BridgeStep platform! Explore your dashboard and let us know what you think.', audience:'all', date:nowISO()},
-  ]);
-
-  DB.write('programs', ['English Conversation','STEM Exploration','Research Skills','College Applications','Leadership','General Life Advice']);
+  for(const r of resources){
+    await db.collection('resources').add(r);
+  }
 }
 
 /* ---------------- Auth ---------------- */
