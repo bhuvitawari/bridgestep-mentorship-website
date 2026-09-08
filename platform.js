@@ -83,6 +83,34 @@ const Auth = {
   setCurrent(user){ sessionStorage.setItem('bs_current_user', JSON.stringify(user)); },
   logout(){ sessionStorage.removeItem('bs_current_user'); window.location.href='login.html'; },
 
+async _createProfile(uid, data) {
+    const userDoc = {
+      id: uid,
+      name: data.name,
+      email: data.email,
+      role: data.role,
+      status: data.role === 'admin' ? 'approved' : 'pending',
+      mentorId: null,
+      studentIds: data.role === 'mentor' ? [] : undefined,
+      goals: data.role === 'student' ? [] : undefined,
+      hoursTotal: 0,
+      joinDate: nowISO()
+    };
+    await firebase.firestore().collection('users').doc(uid).set(userDoc);
+    this.setCurrent(userDoc);
+    return userDoc;
+},
+
+async _loadProfileAfterFirebaseAuth(firebaseUser) {
+ const doc = await firebase.firestore().collection('users').doc(firebaseUser.uid).get();
+ if (doc.exists) {
+   const user = doc.data();
+   this.setCurrent(user);
+   return user;
+ }
+ throw new Error('User profile not found in database.');
+},
+
   login(email, password){
     if(window.USE_FIREBASE){
       // Real Firebase path — activates automatically once firebase-config.js has real keys.
