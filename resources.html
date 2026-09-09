@@ -14,7 +14,6 @@
   .msg-them { background: #ffffff; color: #1e293b; border: 1px solid #e2e8f0; margin-right: auto; border-bottom-left-radius: 2px; }
   .chat-input-row { display: flex; gap: 10px; }
   .chat-input-row input { flex: 1; }
-  /* Ensure a 3-column grid exists for the new input */
   .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
 </style>
 </head>
@@ -35,7 +34,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="platform.js?v=18000"></script>
+<script src="platform.js?v=19000"></script>
 <script>
 (async function init() {
   try {
@@ -44,9 +43,33 @@
 
     await renderChrome(user, 'resources.html');
 
-    const resources = await DB.read('resources');
+    const rawResources = await DB.read('resources');
     const allUsers = await DB.read('users');
     const programs = await DB.read('programs');
+
+    // 1. Sort resources by createdAt (newest first)
+    const sortedResources = rawResources.sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt) : new Date(0);
+      const dateB = b.createdAt ? new Date(b.createdAt) : new Date(0);
+      return dateB - dateA;
+    });
+
+    // 2. Filter resources based on role
+    let displayResources = sortedResources;
+    if (user.role === 'student') {
+      // Students only see resources from their mentor or from an admin
+      displayResources = sortedResources.filter(r => {
+        const uploader = allUsers.find(u => u.id === r.uploadedBy);
+        return r.uploadedBy === user.mentorId || (uploader && uploader.role === 'admin') || r.uploadedBy === 'admin';
+      });
+    } else if (user.role === 'mentor') {
+      // Mentors only see their own resources or from an admin
+      displayResources = sortedResources.filter(r => {
+        const uploader = allUsers.find(u => u.id === r.uploadedBy);
+        return r.uploadedBy === user.id || (uploader && uploader.role === 'admin') || r.uploadedBy === 'admin';
+      });
+    }
+    // Admins see everything (no filter needed)
 
     let activeChatUser = null;
     if (user.role === 'student' && user.mentorId) {
@@ -77,18 +100,28 @@
 
         <div class="card" style="margin-bottom:18px;">
           <h3>Resource Library</h3>
-          ${resources.length ? resources.map(r => `
+          ${displayResources.length ? displayResources.map(r => {
+            const uploader = allUsers.find(u => u.id === r.uploadedBy);
+            const uploaderName = uploader ? uploader.name : 'Admin';
+            
+            // Allow delete if user is admin, or if user is the uploader
+            const canDelete = (user.role === 'admin' || r.uploadedBy === user.id);
+
+            return `
             <div class="list-row">
               <div class="who">
                 <div class="avatar">📄</div>
                 <div>
                   <div style="font-weight:700;">${r.title}</div>
-                  <div class="meta">${r.program || 'General'} · Uploaded by ${r.uploadedBy === user.id ? 'You' : 'Admin/Mentor'}</div>
+                  <div class="meta">${r.program || 'General'} · Uploaded by ${r.uploadedBy === user.id ? 'You' : uploaderName}</div>
                 </div>
               </div>
-              <a href="${r.url || '#'}" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm">Open Resource</a>
+              <div style="display: flex; gap: 8px;">
+                ${canDelete ? `<button class="btn btn-ghost btn-sm" style="color:#ef4444;" onclick="deleteResource('${r.id}')">Delete</button>` : ''}
+                <a href="${r.url || '#'}" target="_blank" rel="noopener noreferrer" class="btn btn-navy btn-sm">Open Resource</a>
+              </div>
             </div>
-          `).join('') : `<div class="empty-state">No resources uploaded yet.</div>`}
+          `}).join('') : `<div class="empty-state">No resources uploaded yet.</div>`}
         </div>
 
         <div class="card">
@@ -106,6 +139,15 @@
 
     render();
 
+    // Attach Delete Resource Function globally
+    window.deleteResource = async function(resourceId) {
+      if (!confirm("Are you sure you want to remove this resource?")) return;
+      if (window.USE_FIREBASE) {
+        await firebase.firestore().collection('resources').doc(resourceId).delete();
+      }
+      location.reload();
+    };
+
     // Attach Upload Resource Event
     const uploadBtn = document.getElementById('uploadResBtn');
     if (uploadBtn) {
@@ -121,7 +163,6 @@
           return;
         }
 
-        // Auto-add https:// if the user forgets it
         if (!linkUrl.startsWith('http://') && !linkUrl.startsWith('https://')) {
           linkUrl = 'https://' + linkUrl;
         }
