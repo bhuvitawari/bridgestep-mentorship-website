@@ -109,13 +109,18 @@
 
       <div class="card" style="margin-top:18px;">
         <h3>Upload a Resource</h3>
-        <div class="grid grid-2">
-          <div class="field"><label>Title</label><input id="resTitle" placeholder="e.g. Study Planner Template"></div>
+        <div class="grid grid-3" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+          <div class="field"><label>Title</label><input id="resTitle" placeholder="e.g. Study Planner"></div>
+          <div class="field"><label>Resource Link</label><input id="resUrl" type="url" placeholder="https://docs.google.com/..."></div>
           <div class="field"><label>Program</label>
-            <select id="resProgram">${programs.map(p=>`<option>${p.name || p}</option>`).join('')}</select>
+            <select id="resProgram">
+              ${programs.length > 0 
+                ? programs.map(p => `<option>${p.name || p}</option>`).join('') 
+                : '<option>General</option><option>College Prep</option><option>STEM</option>'}
+            </select>
           </div>
         </div>
-        <button class="btn btn-navy btn-sm" onclick="addResource()">Add Resource</button>
+        <button class="btn btn-navy btn-sm" onclick="addResource()" style="margin-top: 10px;">Add Resource</button>
       </div>
     `;
   }
@@ -179,13 +184,38 @@
 
   window.addResource = async function(){
     const titleInput = document.getElementById('resTitle');
+    const urlInput = document.getElementById('resUrl');
     const title = titleInput.value.trim();
+    let linkUrl = urlInput.value.trim();
     const programSelect = document.getElementById('resProgram');
     
-    if(!title) {
-      alert('Please enter a resource title.');
+    if(!title || !linkUrl) {
+      alert('Please enter both a title and a valid resource link.');
       return;
     }
+
+    if (!linkUrl.startsWith('http://') && !linkUrl.startsWith('https://')) {
+      linkUrl = 'https://' + linkUrl;
+    }
+
+    await DB.addResource({
+      title: title,
+      type: 'Link',
+      url: linkUrl,
+      uploadedBy: user.id,
+      program: programSelect ? programSelect.value : 'General',
+      createdAt: nowISO()
+    });
+
+    for (const s of myStudents) {
+      await Notif.add(s.id, `New resource added: ${title}.`);
+    }
+
+    titleInput.value = '';
+    urlInput.value = '';
+    alert('Resource added successfully!');
+    location.reload();
+  };
 
     await DB.addResource({
       title: title,
