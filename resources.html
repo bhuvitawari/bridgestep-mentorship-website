@@ -14,6 +14,8 @@
   .msg-them { background: #ffffff; color: #1e293b; border: 1px solid #e2e8f0; margin-right: auto; border-bottom-left-radius: 2px; }
   .chat-input-row { display: flex; gap: 10px; }
   .chat-input-row input { flex: 1; }
+  /* Ensure a 3-column grid exists for the new input */
+  .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
 </style>
 </head>
 <body>
@@ -33,7 +35,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="platform.js?v=17000"></script>
+<script src="platform.js?v=18000"></script>
 <script>
 (async function init() {
   try {
@@ -58,13 +60,18 @@
         ${(user.role === 'mentor' || user.role === 'admin') ? `
           <div class="card" style="margin-bottom:18px;">
             <h3>Upload a New Resource</h3>
-            <div class="grid grid-2">
-              <div class="field"><label>Title</label><input id="resTitle" placeholder="e.g. Study Planner Template"></div>
+            <div class="grid grid-3">
+              <div class="field"><label>Title</label><input id="resTitle" placeholder="e.g. Study Planner"></div>
+              <div class="field"><label>Resource Link</label><input id="resUrl" type="url" placeholder="https://docs.google.com/..."></div>
               <div class="field"><label>Program</label>
-                <select id="resProgram">${programs.map(p => `<option>${p.name || p}</option>`).join('')}</select>
+                <select id="resProgram">
+                  ${programs.length > 0 
+                    ? programs.map(p => `<option>${p.name || p}</option>`).join('') 
+                    : '<option>General</option><option>College Prep</option><option>STEM</option><option>English</option>'}
+                </select>
               </div>
             </div>
-            <button class="btn btn-navy btn-sm" id="uploadResBtn">Add Resource</button>
+            <button class="btn btn-navy btn-sm" id="uploadResBtn" style="margin-top: 10px;">Add Resource</button>
           </div>
         ` : ''}
 
@@ -104,18 +111,25 @@
     if (uploadBtn) {
       uploadBtn.addEventListener('click', async () => {
         const titleInput = document.getElementById('resTitle');
+        const urlInput = document.getElementById('resUrl');
         const title = titleInput.value.trim();
+        let linkUrl = urlInput.value.trim();
         const programSelect = document.getElementById('resProgram');
         
-        if(!title) {
-          alert('Please enter a resource title.');
+        if(!title || !linkUrl) {
+          alert('Please enter both a title and a valid resource link.');
           return;
+        }
+
+        // Auto-add https:// if the user forgets it
+        if (!linkUrl.startsWith('http://') && !linkUrl.startsWith('https://')) {
+          linkUrl = 'https://' + linkUrl;
         }
 
         await DB.addResource({
           title: title,
           type: 'Link',
-          url: '#',
+          url: linkUrl,
           uploadedBy: user.id,
           program: programSelect ? programSelect.value : 'General',
           createdAt: nowISO()
@@ -128,6 +142,7 @@
         }
 
         titleInput.value = '';
+        urlInput.value = '';
         alert('Resource added successfully!');
         location.reload();
       });
