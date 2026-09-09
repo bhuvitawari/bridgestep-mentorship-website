@@ -40,7 +40,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="platform.js"></script>
+<script src="platform.js?v=7000"></script>
 <script>
 (async function init() {
   const user = await Auth.requireAuth(['mentor']);
@@ -65,6 +65,13 @@
         <div class="card stat-card"><div class="num">${user.hoursTotal||0}</div><div class="label">Total Mentoring Hours</div></div>
         <div class="card stat-card"><div class="num">${past.length}</div><div class="label">Sessions Completed</div></div>
         <div class="card stat-card"><div class="num">${upcoming.length}</div><div class="label">Upcoming Sessions</div></div>
+      </div>
+
+      <div class="card" style="margin-bottom:18px;">
+        <h3>Session Activity</h3>
+        <div style="position: relative; width: 100%; height: 250px;">
+          <canvas id="mentorChart"></canvas>
+        </div>
       </div>
 
       <div class="card" style="margin-bottom:18px;">
@@ -112,7 +119,36 @@
       </div>
     `;
   }
+  
+  // Render the HTML first
   render();
+
+  // Initialize the Chart
+  const canvasElem = document.getElementById('mentorChart');
+  if (canvasElem) {
+    const ctx = canvasElem.getContext('2d');
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: ['Completed Sessions', 'Upcoming Sessions'],
+        datasets: [{
+          label: 'Sessions Overview',
+          data: [past.length, upcoming.length],
+          borderColor: '#2563eb',
+          backgroundColor: 'rgba(37, 99, 235, 0.1)',
+          fill: true,
+          tension: 0.3
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: { beginAtZero: true, ticks: { stepSize: 1 } }
+        }
+      }
+    });
+  }
 
   let activeSessionId = null;
   window.editNotes = function(sessionId){
