@@ -37,7 +37,7 @@
   const allUsers = await DB.read('users');
   const allSessions = await DB.read('sessions');
   
-  const pendingUsers = allUsers.filter(u => u.status === 'pending');
+  const pendingUsers = allUsers.filter(u => u.role !== 'admin' && u.status !== 'approved');
   // Strict filter: only users who are approved will show in the matching dropdowns
   const mentors = allUsers.filter(u => u.role === 'mentor' && u.status === 'approved');
   const students = allUsers.filter(u => u.role === 'student' && u.status === 'approved');
