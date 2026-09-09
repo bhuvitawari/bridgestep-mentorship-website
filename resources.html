@@ -27,6 +27,11 @@
 <script src="firebase-config.js"></script>
 <script src="platform.js"></script>
 <script src="platform.js?v=2000"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="platform.js?v=3000"></script>
 <script>
 (async function init() {
   const user = await Auth.requireAuth(['student', 'mentor', 'admin']);
@@ -39,7 +44,33 @@
 
   function render() {
     document.getElementById('content').innerHTML = `
-      <div class="card" style="margin-bottom:18px;">
+      ${(user.role === 'mentor' || user.role === 'admin') ? `
+        <div class="card" style="margin-bottom:18px;">
+          <h3>Add New Resource Link</h3>
+          <div class="grid grid-2" style="margin-bottom:12px;">
+            <div class="field"><label>Resource Title</label><input id="resTitle" placeholder="e.g. SAT Math Prep Checklist"></div>
+            <div class="field"><label>Program / Category</label>
+              <select id="resProgram">
+                ${programs.map(p => `<option>${p.name || p}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+          <div class="grid grid-2" style="margin-bottom:12px;">
+            <div class="field"><label>Resource URL (Google Drive / PDF / Doc link)</label><input id="resUrl" placeholder="https://drive.google.com/..."></div>
+            <div class="field"><label>Format Type</label>
+              <select id="resType">
+                <option>PDF / Document</option>
+                <option>Google Drive</option>
+                <option>Video / Audio</option>
+                <option>External Link</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn btn-navy btn-sm" onclick="saveResource()">Save Resource</button>
+        </div>
+      ` : ''}
+
+      <div class="card">
         <h3>Resource Library</h3>
         ${resources.length ? resources.map(r => `
           <div class="list-row">
@@ -50,13 +81,37 @@
                 <div class="meta">${r.program} · Type: ${r.type || 'Link'}</div>
               </div>
             </div>
-            <a href="${r.url || '#'}" target="_blank" class="btn btn-ghost btn-sm">View Resource</a>
+            <a href="${r.url || '#'}" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm">Open Resource</a>
           </div>
-        `).join('') : `<div class="empty-state">No resources uploaded yet.</div>`}
+        `).join('') : `<div class="empty-state">No resources available yet.</div>`}
       </div>
     `;
   }
   render();
+
+  window.saveResource = async function() {
+    const title = document.getElementById('resTitle').value.trim();
+    const url = document.getElementById('resUrl').value.trim();
+    const program = document.getElementById('resProgram').value;
+    const type = document.getElementById('resType').value;
+
+    if (!title || !url) {
+      alert('Please enter both a title and a URL.');
+      return;
+    }
+
+    await DB.addResource({
+      title,
+      url,
+      program,
+      type,
+      uploadedBy: user.id,
+      createdAt: nowISO()
+    });
+
+    alert('Resource link added successfully!');
+    location.reload();
+  };
 })();
 </script>
 </body>
