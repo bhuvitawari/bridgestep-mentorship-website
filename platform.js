@@ -149,17 +149,16 @@ const Auth = {
     throw new Error('User profile not found in database.');
   },
 
-  login(email, password){
+  async login(email, password){
     if(window.USE_FIREBASE){
-      // Real Firebase path — activates automatically once firebase-config.js has real keys.
-      return firebase.auth().signInWithEmailAndPassword(email, password)
-        .then(cred => this._loadProfileAfterFirebaseAuth(cred.user));
+      const cred = await firebase.auth().signInWithEmailAndPassword(email, password);
+      return await Auth._loadProfileAfterFirebaseAuth(cred.user);
     }
     const users = DB.read('users');
     const u = users.find(x => x.email.toLowerCase()===email.toLowerCase() && x.password===password);
-    if(!u) return Promise.reject(new Error('Incorrect email or password.'));
+    if(!u) throw new Error('Incorrect email or password.');
     this.setCurrent(u);
-    return Promise.resolve(u);
+    return u;
   },
    
   resetPassword(email){
@@ -246,6 +245,3 @@ function renderChrome(user, activeHref){
     setTimeout(()=>{ const dot=document.querySelector('.bell .dot'); if(dot) dot.remove(); }, 400);
   });
 }
-
-/* Init demo data as soon as this script loads anywhere in the app */
-seedIfEmpty();
