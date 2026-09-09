@@ -12,6 +12,11 @@ const DB_KEYS = ['users','sessions','resources','messages','notifications','anno
 const db = firebase.firestore();
 
 const DB = {
+   async addResource(resourceData) {
+    const docRef = await firebase.firestore().collection('resources').add(resourceData);
+    return docRef.id;
+  },
+   
   async read(collectionName) {
     try {
       const snapshot = await db.collection(collectionName).get();
