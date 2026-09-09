@@ -206,15 +206,29 @@ const Auth = {
   async requireAuth(allowedRoles){
     const u = this.current();
     if(!u){ window.location.href='login.html'; return null; }
-    if(allowedRoles && !allowedRoles.includes(u.role)){
-      window.location.href = u.role + '.html';
+    
+    // Fetch fresh data from Firestore to check live status
+    const users = await DB.read('users');
+    const fresh = users.find(x => x.id === u.id) || u;
+    this.setCurrent(fresh);
+
+    // ENFORCE APPROVAL: Block non-admins who aren't approved
+    if(fresh.role !== 'admin' && fresh.status !== 'approved') {
+      document.body.innerHTML = `
+        <div style="padding: 100px 20px; text-align: center; font-family: 'Inter', sans-serif;">
+          <h2>Account Pending Approval</h2>
+          <p style="color: #64748b; margin-bottom: 20px;">An admin must approve your BridgeStep application before you can access the platform.</p>
+          <button style="padding: 8px 16px; background: #1e293b; color: white; border: none; border-radius: 4px; cursor: pointer;" onclick="Auth.logout()">Log Out</button>
+        </div>`;
       return null;
     }
-    // Keep in sync with latest stored data safely
-    const users = await DB.read('users');
-    const fresh = users.find(x => x.id === u.id);
-    if(fresh){ this.setCurrent(fresh); return fresh; }
-    return u;
+
+    if(allowedRoles && !allowedRoles.includes(fresh.role)){
+      window.location.href = fresh.role + '.html';
+      return null;
+    }
+
+    return fresh;
   }
 };
 
