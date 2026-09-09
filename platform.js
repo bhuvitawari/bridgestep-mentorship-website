@@ -1,15 +1,6 @@
 /* ============================================================
    BridgeStep Platform — core logic
-   Runs in DEMO MODE out of the box (all data in this browser's
-   localStorage — no account or setup needed to try it).
-   The moment real keys are added to firebase-config.js, the
-   auth calls below switch to real Firebase Authentication
-   automatically. See README-PLATFORM.md.
    ============================================================ */
-
-const DB_KEYS = ['users','sessions','resources','messages','notifications','announcements','programs'];
-
-const db = firebase.firestore();
 
 const DB_KEYS = ['users','sessions','resources','messages','notifications','announcements','programs'];
 
@@ -86,10 +77,8 @@ function fmtTime(iso){ const d=new Date(iso); return d.toLocaleTimeString(undefi
 function initials(name){ return name.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase(); }
 
 /* ---------------- Seed demo data (only runs once) ---------------- */
-/* ---------------- Seed demo data (only runs once) ---------------- */
 async function seedIfEmpty(){
   if(!window.USE_FIREBASE) return;
-  const db = firebase.firestore();
   
   // Check if users collection already has data
   const snapshot = await db.collection('users').get();
@@ -163,7 +152,7 @@ const Auth = {
         return await Auth._createProfile(cred.user.uid, data);
       }
     }
-    const users = DB.read('users');
+    const users = await DB.read('users');
     if (users.some(x => x.email.toLowerCase() === data.email.toLowerCase())) {
       throw new Error('An account with this email already exists.');
     }
@@ -178,7 +167,7 @@ const Auth = {
     if (data.role === 'student') newUser.goals = [];
 
     users.push(newUser); 
-    DB.write('users', users);
+    await DB.write('users', users);
     this.setCurrent(newUser);
     return newUser;
   },
@@ -198,18 +187,18 @@ const Auth = {
       const cred = await firebase.auth().signInWithEmailAndPassword(email, password);
       return await Auth._loadProfileAfterFirebaseAuth(cred.user);
     }
-    const users = DB.read('users');
+    const users = await DB.read('users');
     const u = users.find(x => x.email.toLowerCase()===email.toLowerCase() && x.password===password);
     if(!u) throw new Error('Incorrect email or password.');
     this.setCurrent(u);
     return u;
   },
    
-  resetPassword(email){
+  async resetPassword(email){
     if(window.USE_FIREBASE){
       return firebase.auth().sendPasswordResetEmail(email);
     }
-    const users = DB.read('users');
+    const users = await DB.read('users');
     const exists = users.some(u=>u.email.toLowerCase()===email.toLowerCase());
     return exists ? Promise.resolve() : Promise.reject(new Error('No account found with that email.'));
   },
