@@ -9,7 +9,7 @@
 <link rel="stylesheet" href="platform.css">
 <style>
   .session-topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-  .timer { font-family: monospace; font-size: 18px; font-weight: 700; color: var(--navy); }
+  .timer { font-family: monospace; font-size: 18px; font-weight: 700; color: var(--navy, #1e293b); }
   #jitsiContainer { width: 100%; height: 600px; background: #000; border-radius: 8px; overflow: hidden; }
 </style>
 </head>
@@ -27,7 +27,7 @@
         <div class="session-topbar">
           <div>
             <div style="font-weight:700; font-size:14px;" id="sessionWith">Loading user info...</div>
-            <div class="meta" style="color:var(--text-muted); font-size:12.5px;">Video · Audio · Chat · Screen share — powered by Jitsi Meet, opens directly here.</div>
+            <div class="meta" style="color:#64748b; font-size:12.5px;">Video · Audio · Chat · Screen share — powered by Jitsi Meet.</div>
           </div>
           <div style="text-align:right;">
             <div class="timer" id="timerDisplay">00:00:00</div>
@@ -44,74 +44,128 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="platform.js?v=8000"></script>
-<script src="https://meet.jit.si/external_api.js"></script>
+<script src="platform.js?v=9000"></script>
+<script src="https://8x8.vc/v1/external_api.js"></script>
 <script>
 (async function init() {
-  // 1. Wait for authentication
   const user = await Auth.requireAuth(['student', 'mentor']);
   if (!user) return;
 
   await renderChrome(user, 'session.html');
 
-  // 2. Setup Jitsi Room
-  // We use a shared room name based on the mentor's ID so the student and mentor land in the same place.
-  const roomName = user.role === 'mentor' 
-    ? `BridgeStep_Room_${user.id}` 
-    : `BridgeStep_Room_${user.mentorId || 'Unassigned'}`;
+  const allUsers = await DB.read('users');
+  let partner = null;
 
+  if (user.role === 'mentor') {
+    const studentId = (user.studentIds && user.studentIds.length) ? user.studentIds[0] : null;
+    partner = allUsers.find(u => u.id === studentId);
+  } else {
+    partner = allUsers.find(u => u.id === user.mentorId);
+  }
+
+  document.getElementById('sessionWith').innerText = partner 
+    ? `Session with ${partner.name}` 
+    : `Session Room (${user.role === 'mentor' ? 'No student paired yet' : 'No mentor paired yet'})`;
+
+  const roomId = user.role === 'mentor' ? user.id : (user.mentorId || 'unassigned');
+  const roomName = `BridgeStep_Room_${roomId.replace(/[^a-zA-R0-9]/g, '')}`;
+
+  // Initialize Jitsi Meet Iframe API
   const domain = 'meet.jit.si';
   const options = {
     roomName: roomName,
     width: '100%',
     height: 600,
-    parentNode: document.querySelector('#jitsi-container'),
+    parentNode: document.querySelector('#jitsiContainer'),
     userInfo: {
       displayName: user.name
+    },
+    configOverwrite: {
+      prejoinPageEnabled: false,
+      startWithAudioMuted: false,
+      startWithVideoMuted: false
     }
   };
   
-  const api = new JitsiMeetExternalAPI(domain, options);
-
-  // 3. Track Session Time
-  let sessionStartTime = null;
-
-  document.getElementById('startSessionBtn').addEventListener('click', () => {
-    sessionStartTime = new Date();
-    alert('Session timer started!');
-  });
-
-  document.getElementById('endSessionBtn').addEventListener('click', async () => {
-    if (!sessionStartTime) {
-      alert('You must start the session first.');
-      return;
+  let api = null;
+  try {
+    if (typeof JitsiMeetExternalAPI !== 'undefined') {
+      api = new JitsiMeetExternalAPI(domain, options);
     }
-    
-    const endTime = new Date();
-    const durationMinutes = Math.round((endTime - sessionStartTime) / 60000);
-    
-    // Create the session record
-    const allSessions = await DB.read('sessions');
-    allSessions.push({
-      id: uid('sess'),
-      mentorId: user.role === 'mentor' ? user.id : user.mentorId,
-      studentId: user.role === 'student' ? user.id : null, // The admin or mentor will sync this later if needed
-      start: sessionStartTime.toISOString(),
-      durationMinutes: durationMinutes,
-      status: 'completed'
-    });
-    await DB.write('sessions', allSessions);
+  } catch (err) {
+    console.warn("Jitsi External API failed to load directly, embedding iframe backup:", err);
+    document.getElementById('jitsiContainer').innerHTML = `<iframe src="https://meet.jit.si/${roomName}" style="width:100%; height:600px; border:0;"></iframe>`;
+  }
 
-    // Update user's total hours
-    const allUsers = await DB.read('users');
-    const userIndex = allUsers.findIndex(u => u.id === user.id);
-    if (userIndex !== -1) {
-      allUsers[userIndex].hoursTotal = (allUsers[userIndex].hoursTotal || 0) + (durationMinutes / 60);
-      await DB.write('users', allUsers);
+  // Timer Control Logic
+  let timerInterval = null;
+  let secondsElapsed = 0;
+  let isRunning = false;
+  let sessionStartISO = null;
+
+  const toggleBtn = document.getElementById('toggleBtn');
+  const timerDisplay = document.getElementById('timerDisplay');
+
+  function formatTimer(sec) {
+    const hrs = String(Math.floor(sec / 3600)).padStart(2, '0');
+    const mins = String(Math.floor((sec % 3600) / 60)).padStart(2, '0');
+    const secs = String(sec % 60).padStart(2, '0');
+    return `${hrs}:${mins}:${secs}`;
+  }
+
+  toggleBtn.addEventListener('click', async (e) => {
+    e.preventDefault();
+    
+    if (!isRunning) {
+      // START SESSION
+      isRunning = true;
+      sessionStartISO = nowISO();
+      toggleBtn.innerText = 'End Session & Save Hours';
+      toggleBtn.style.backgroundColor = '#1e293b';
+      toggleBtn.style.color = '#ffffff';
+
+      timerInterval = setInterval(() => {
+        secondsElapsed++;
+        timerDisplay.innerText = formatTimer(secondsElapsed);
+      }, 1000);
+    } else {
+      // END SESSION
+      clearInterval(timerInterval);
+      isRunning = false;
+
+      const durationMinutes = Math.max(1, Math.round(secondsElapsed / 60));
+
+      toggleBtn.disabled = true;
+      toggleBtn.innerText = 'Saving...';
+
+      try {
+        const allSessions = await DB.read('sessions');
+        allSessions.push({
+          id: uid('sess'),
+          mentorId: user.role === 'mentor' ? user.id : user.mentorId,
+          studentId: user.role === 'student' ? user.id : (partner ? partner.id : null),
+          start: sessionStartISO,
+          durationMinutes: durationMinutes,
+          status: 'completed'
+        });
+        await DB.write('sessions', allSessions);
+
+        const freshUsers = await DB.read('users');
+        const uIdx = freshUsers.findIndex(u => u.id === user.id);
+        if (uIdx !== -1) {
+          const addedHours = Number((durationMinutes / 60).toFixed(2));
+          freshUsers[uIdx].hoursTotal = (freshUsers[uIdx].hoursTotal || 0) + addedHours;
+          await DB.write('users', freshUsers);
+        }
+
+        alert(`Session ended! Logged ${durationMinutes} minutes.`);
+        window.location.href = user.role + '.html';
+      } catch (err) {
+        console.error("Error saving session hours:", err);
+        alert("Saved session locally, redirecting...");
+        window.location.href = user.role + '.html';
+      }
     }
-
-    alert(`Session ended! Logged ${durationMinutes} minutes.`);
-    window.location.href = user.role + '.html'; // redirect back to dashboard
   });
 })();
 </script>
