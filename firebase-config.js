@@ -1,12 +1,3 @@
-/* ============================================================
-   Fill this in with your real Firebase project's config once
-   you've created one (see README-PLATFORM.md, Part 2).
-   Until you do, apiKey stays empty and the whole platform runs
-   in DEMO MODE automatically — real accounts, sessions, hours
-   etc. are simulated in this browser's storage so you can test
-   and demo the product today.
-   ============================================================ */
-
 window.USE_FIREBASE = true;
 
 const firebaseConfig = {
@@ -23,11 +14,18 @@ if (!firebase.apps.length) {
   firebase.initializeApp(firebaseConfig);
 }
 
-// Keep Firebase auth state synced with your browser session
-firebase.auth().onAuthStateChanged((user) => {
-  if (user) {
-    console.log("Firebase Auth Active:", user.uid);
-  } else {
-    console.warn("No active Firebase Auth user detected.");
-  }
+// Ensure Auth persistence is set to LOCAL so reloads keep you logged in
+firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+
+// Helper promise to wait for Firebase Auth state to resolve
+window.firebaseAuthReady = new Promise((resolve) => {
+  const unsubscribe = firebase.auth().onAuthStateChanged((user) => {
+    if (user) {
+      console.log("Firebase Auth Active:", user.uid);
+    } else {
+      console.warn("No active Firebase Auth user detected.");
+    }
+    unsubscribe();
+    resolve(user);
+  });
 });
