@@ -26,8 +26,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="platform.js"></script>
-<script src="platform.js?v=2000"></script>
+<script src="platform.js?v=6000"></script>
 <script>
 (async function init() {
   const user = await Auth.requireAuth(['admin']);
@@ -35,10 +34,15 @@
 
   await renderChrome(user, 'admin.html');
 
-  let allUsers = await DB.read('users');
-  let pendingUsers = allUsers.filter(u => u.status === 'pending');
-  let mentors = allUsers.filter(u => u.role === 'mentor' && u.status === 'approved');
-  let students = allUsers.filter(u => u.role === 'student' && u.status === 'approved');
+  const allUsers = await DB.read('users');
+  const allSessions = await DB.read('sessions');
+  
+  const pendingUsers = allUsers.filter(u => u.status === 'pending');
+  const mentors = allUsers.filter(u => u.role === 'mentor' && u.status === 'approved');
+  const students = allUsers.filter(u => u.role === 'student' && u.status === 'approved');
+  
+  const completedSessions = allSessions.filter(s => s.status === 'completed').length;
+  const upcomingSessions = allSessions.filter(s => s.status === 'upcoming').length;
 
   function render() {
     document.getElementById('content').innerHTML = `
@@ -47,6 +51,13 @@
         <div class="card stat-card"><div class="num">${students.length}</div><div class="label">Active Students</div></div>
         <div class="card stat-card"><div class="num">${mentors.length}</div><div class="label">Active Mentors</div></div>
         <div class="card stat-card"><div class="num">${pendingUsers.length}</div><div class="label">Pending Applications</div></div>
+      </div>
+
+      <div class="card" style="margin-bottom:18px;">
+        <h3>Platform Overview & Session Growth</h3>
+        <div style="position: relative; width: 100%; height: 300px;">
+          <canvas id="adminChart"></canvas>
+        </div>  
       </div>
 
       <div class="card" style="margin-bottom:18px;">
@@ -79,7 +90,33 @@
       </div>
     `;
   }
+  
+  // Render the HTML first
   render();
+
+  // Now that the canvas element exists in the DOM, initialize the Chart
+  const ctx = document.getElementById('adminChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Students', 'Mentors', 'Completed Sessions', 'Upcoming Sessions'],
+      datasets: [{
+        label: 'Platform Totals',
+        data: [students.length, mentors.length, completedSessions, upcomingSessions],
+        backgroundColor: ['#2563eb', '#059669', '#d97706', '#9333ea']
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        y: { beginAtZero: true, ticks: { stepSize: 1 } }
+      }
+    }
+  });
 
   window.approveUser = async function(userId) {
     const freshUsers = await DB.read('users');
