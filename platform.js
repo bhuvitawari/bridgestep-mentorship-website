@@ -170,15 +170,16 @@ const Auth = {
     return exists ? Promise.resolve() : Promise.reject(new Error('No account found with that email.'));
   },
 
-  requireAuth(allowedRoles){
+  async requireAuth(allowedRoles){
     const u = this.current();
     if(!u){ window.location.href='login.html'; return null; }
     if(allowedRoles && !allowedRoles.includes(u.role)){
       window.location.href = u.role + '.html';
       return null;
     }
-    // keep in sync with latest stored data (e.g. after admin edits)
-    const fresh = DB.read('users').find(x=>x.id===u.id);
+    // Keep in sync with latest stored data safely
+    const users = await DB.read('users');
+    const fresh = users.find(x => x.id === u.id);
     if(fresh){ this.setCurrent(fresh); return fresh; }
     return u;
   }
@@ -186,16 +187,23 @@ const Auth = {
 
 /* ---------------- Notifications ---------------- */
 const Notif = {
-  forUser(userId){ return DB.read('notifications').filter(n=>n.userId===userId).sort((a,b)=>new Date(b.ts)-new Date(a.ts)); },
-  unreadCount(userId){ return this.forUser(userId).filter(n=>!n.read).length; },
-  markAllRead(userId){
-    const all = DB.read('notifications').map(n=> n.userId===userId ? {...n, read:true} : n);
-    DB.write('notifications', all);
+  async forUser(userId){ 
+    const all = await DB.read('notifications');
+    return all.filter(n => n.userId === userId).sort((a,b) => new Date(b.ts) - new Date(a.ts)); 
   },
-  add(userId, text){
-    const all = DB.read('notifications');
+  async unreadCount(userId){ 
+    const userNotifs = await this.forUser(userId);
+    return userNotifs.filter(n => !n.read).length; 
+  },
+  async markAllRead(userId){
+    const all = await DB.read('notifications');
+    const updated = all.map(n => n.userId === userId ? {...n, read:true} : n);
+    await DB.write('notifications', updated);
+  },
+  async add(userId, text){
+    const all = await DB.read('notifications');
     all.push({id:uid('n'), userId, text, read:false, ts:nowISO()});
-    DB.write('notifications', all);
+    await DB.write('notifications', all);
   }
 };
 
@@ -217,7 +225,7 @@ const NAV = {
   ],
 };
 
-function renderChrome(user, activeHref){
+async function renderChrome(user, activeHref){
   const nav = NAV[user.role] || [];
   const navHtml = nav.map(item => `<a href="${item.href}" class="${item.href===activeHref?'active':''}">${item.icon} ${item.label}</a>`).join('');
 
@@ -229,19 +237,19 @@ function renderChrome(user, activeHref){
       <button onclick="Auth.logout()">Log out</button>
     </div>`;
 
-  const unread = Notif.unreadCount(user.id);
+  const unread = await Notif.unreadCount(user.id);
   document.getElementById('topbar-right').innerHTML = `
     <div class="bell" id="bellBtn">🔔${unread>0?'<span class="dot"></span>':''}</div>
     <div class="avatar" title="${user.name}">${initials(user.name)}</div>
     <div id="notifPanel" class="notif-panel"></div>`;
 
-  document.getElementById('bellBtn').addEventListener('click', ()=>{
+  document.getElementById('bellBtn').addEventListener('click', async ()=>{
     const panel = document.getElementById('notifPanel');
-    const items = Notif.forUser(user.id);
+    const items = await Notif.forUser(user.id);
     panel.innerHTML = items.length ? items.map(n=>`<div class="notif-item">${n.text}<div class="time">${fmtDate(n.ts)} · ${fmtTime(n.ts)}</div></div>`).join('')
       : `<div class="notif-item">No notifications yet.</div>`;
     panel.classList.toggle('show');
-    Notif.markAllRead(user.id);
+    await Notif.markAllRead(user.id);
     setTimeout(()=>{ const dot=document.querySelector('.bell .dot'); if(dot) dot.remove(); }, 400);
   });
 }
