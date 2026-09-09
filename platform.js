@@ -86,9 +86,9 @@ const Auth = {
   async _createProfile(uid, data) {
     const userDoc = {
       id: uid,
-      name: data.name,
-      email: data.email,
-      role: data.role,
+      name: data.name || '',
+      email: data.email || '',
+      role: data.role || 'student',
       status: data.role === 'admin' ? 'approved' : 'pending',
       mentorId: null,
       hoursTotal: 0,
@@ -105,6 +105,38 @@ const Auth = {
     await firebase.firestore().collection('users').doc(uid).set(userDoc);
     this.setCurrent(userDoc);
     return userDoc;
+  },
+
+  async signup(data) {
+    if (window.USE_FIREBASE) {
+      const cred = await firebase.auth().createUserWithEmailAndPassword(data.email, data.password);
+      if (cred.user) {
+        try {
+          await cred.user.sendEmailVerification();
+        } catch (e) {
+          console.warn("Email verification could not be sent immediately:", e);
+        }
+        return await Auth._createProfile(cred.user.uid, data);
+      }
+    }
+    const users = DB.read('users');
+    if (users.some(x => x.email.toLowerCase() === data.email.toLowerCase())) {
+      throw new Error('An account with this email already exists.');
+    }
+    const newUser = {
+      id: uid(data.role),
+      name: data.name, email: data.email, password: data.password, role: data.role,
+      status: data.role === 'admin' ? 'approved' : 'pending',
+      mentorId: null,
+      hoursTotal: 0, joinDate: nowISO(),
+    };
+    if (data.role === 'mentor') newUser.studentIds = [];
+    if (data.role === 'student') newUser.goals = [];
+
+    users.push(newUser); 
+    DB.write('users', users);
+    this.setCurrent(newUser);
+    return newUser;
   },
 
   async _loadProfileAfterFirebaseAuth(firebaseUser) {
@@ -129,38 +161,7 @@ const Auth = {
     this.setCurrent(u);
     return Promise.resolve(u);
   },
-
-  signup(data){
-    if(window.USE_FIREBASE){
-      return firebase.auth().createUserWithEmailAndPassword(data.email, data.password)
-        .then(cred => {
-          cred.user.sendEmailVerification();
-          return this._createProfile(cred.user.uid, data);
-        });
-    }
-    const users = DB.read('users');
-    if(users.some(x=>x.email.toLowerCase()===data.email.toLowerCase())){
-      return Promise.reject(new Error('An account with this email already exists.'));
-    }
-    const newUser = {
-      id: uid(data.role),
-      name: data.name, email: data.email, password: data.password, role: data.role,
-      status: data.role==='admin' ? 'approved' : 'pending',
-      mentorId: null, studentIds: data.role==='mentor' ? [] : undefined,
-      goals: data.role==='student' ? [] : undefined,
-      hoursTotal: 0, joinDate: nowISO(),
-    };
-    users.push(newUser); DB.write('users', users);
-    if(newUser.status==='pending'){
-      const admins = users.filter(u=>u.role==='admin');
-      const notifs = DB.read('notifications');
-      admins.forEach(a=>notifs.push({id:uid('n'), userId:a.id, text:`New ${data.role} application pending approval: ${data.name}.`, read:false, ts:nowISO()}));
-      DB.write('notifications', notifs);
-    }
-    this.setCurrent(newUser);
-    return Promise.resolve(newUser);
-  },
-
+   
   resetPassword(email){
     if(window.USE_FIREBASE){
       return firebase.auth().sendPasswordResetEmail(email);
