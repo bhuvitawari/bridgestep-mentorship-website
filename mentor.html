@@ -40,11 +40,11 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="platform.js?v=18000"></script>
+<script src="platform.js?v=19000"></script>
 <script>
 (async function init() {
   const user = await Auth.requireAuth(['mentor']);
-  if(!user) return; // Stop executing if not logged in
+  if(!user) return;
 
   await renderChrome(user, 'mentor.html');
 
@@ -125,10 +125,8 @@
     `;
   }
   
-  // Render the HTML first
   render();
 
-  // Initialize the Chart
   const canvasElem = document.getElementById('mentorChart');
   if (canvasElem) {
     const ctx = canvasElem.getContext('2d');
