@@ -16,7 +16,30 @@ const DB = {
     const docRef = await firebase.firestore().collection('resources').add(resourceData);
     return docRef.id;
   },
-   
+
+async getMessages(userAId, userBId) {
+  if (!window.USE_FIREBASE) return [];
+  const snapshot = await firebase.firestore().collection('messages').get();
+  const all = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  return all.filter(m => 
+    (m.fromId === userAId && m.toId === userBId) || 
+    (m.fromId === userBId && m.toId === userAId)
+  ).sort((a, b) => new Date(a.ts) - new Date(b.ts));
+},
+
+async sendMessage(fromId, toId, text) {
+  const msgObj = {
+    id: uid('msg'),
+    fromId: fromId,
+    toId: toId,
+    text: text,
+    ts: nowISO()
+  };
+  if (window.USE_FIREBASE) {
+    await firebase.firestore().collection('messages').doc(msgObj.id).set(msgObj);
+  }
+  return msgObj;
+}
   async read(collectionName) {
     try {
       const snapshot = await db.collection(collectionName).get();
