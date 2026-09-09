@@ -204,16 +204,27 @@ const Auth = {
   },
 
   async requireAuth(allowedRoles){
+    // Wait for Firebase Auth state to resolve first
+    if (window.USE_FIREBASE && window.firebaseAuthReady) {
+      await window.firebaseAuthReady;
+    }
+
+    const fbUser = firebase.auth().currentUser;
+    if (window.USE_FIREBASE && !fbUser) {
+      window.location.href = 'login.html';
+      return null;
+    }
+
     const u = this.current();
-    if(!u){ window.location.href='login.html'; return null; }
-    
-    // Fetch fresh data from Firestore to check live status
+    if (!u) { window.location.href = 'login.html'; return null; }
+
+    // Fetch fresh profile doc from Firestore
     const users = await DB.read('users');
-    const fresh = users.find(x => x.id === u.id) || u;
+    const fresh = users.find(x => x.id === (fbUser ? fbUser.uid : u.id)) || u;
     this.setCurrent(fresh);
 
     // ENFORCE APPROVAL: Block non-admins who aren't approved
-    if(fresh.role !== 'admin' && fresh.status !== 'approved') {
+    if (fresh.role !== 'admin' && fresh.status !== 'approved') {
       document.body.innerHTML = `
         <div style="padding: 100px 20px; text-align: center; font-family: 'Inter', sans-serif;">
           <h2>Account Pending Approval</h2>
@@ -223,7 +234,7 @@ const Auth = {
       return null;
     }
 
-    if(allowedRoles && !allowedRoles.includes(fresh.role)){
+    if (allowedRoles && !allowedRoles.includes(fresh.role)) {
       window.location.href = fresh.role + '.html';
       return null;
     }
