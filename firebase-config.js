@@ -7,6 +7,8 @@
    and demo the product today.
    ============================================================ */
 
+window.USE_FIREBASE = true;
+
 const firebaseConfig = {
   apiKey: "AIzaSyDSUhzjJMKcvzq5Oyuf1vh9Bs0rGFvT68c",
   authDomain: "bridgestep-mentorship-website.firebaseapp.com",
