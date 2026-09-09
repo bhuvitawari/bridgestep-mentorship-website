@@ -26,7 +26,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="platform.js?v=6000"></script>
+<script src="platform.js?v=14000"></script>
 <script>
 (async function init() {
   const user = await Auth.requireAuth(['admin']);
@@ -91,10 +91,8 @@
     `;
   }
   
-  // Render the HTML first
   render();
 
-  // Now that the canvas element exists in the DOM, initialize the Chart
   const ctx = document.getElementById('adminChart').getContext('2d');
   new Chart(ctx, {
     type: 'bar',
@@ -119,39 +117,66 @@
   });
 
   window.approveUser = async function(userId) {
-    const freshUsers = await DB.read('users');
-    const idx = freshUsers.findIndex(u => u.id === userId);
-    if (idx !== -1) {
-      freshUsers[idx].status = 'approved';
-      await DB.write('users', freshUsers);
-      await Notif.add(userId, 'Your BridgeStep application has been approved! Welcome aboard.');
-      alert('User approved!');
-      location.reload();
+    if (window.USE_FIREBASE) {
+      await firebase.firestore().collection('users').doc(userId).update({ status: 'approved' });
+    } else {
+      const freshUsers = await DB.read('users');
+      const idx = freshUsers.findIndex(u => u.id === userId);
+      if (idx !== -1) {
+        freshUsers[idx].status = 'approved';
+        await DB.write('users', freshUsers);
+      }
     }
+    await Notif.add(userId, 'Your BridgeStep application has been approved! Welcome aboard.');
+    alert('User approved!');
+    location.reload();
   };
 
   window.assignMatch = async function() {
-    const studentId = document.getElementById('matchStudent').value;
-    const mentorId = document.getElementById('matchMentor').value;
-    if (!studentId || !mentorId) return;
+    const studentSelect = document.getElementById('matchStudent');
+    const mentorSelect = document.getElementById('matchMentor');
 
-    const freshUsers = await DB.read('users');
-    const stIdx = freshUsers.findIndex(u => u.id === studentId);
-    const mtIdx = freshUsers.findIndex(u => u.id === mentorId);
+    if (!studentSelect || !mentorSelect) return;
 
-    if (stIdx !== -1 && mtIdx !== -1) {
-      freshUsers[stIdx].mentorId = mentorId;
-      freshUsers[mtIdx].studentIds = freshUsers[mtIdx].studentIds || [];
-      if (!freshUsers[mtIdx].studentIds.includes(studentId)) {
-        freshUsers[mtIdx].studentIds.push(studentId);
-      }
-      await DB.write('users', freshUsers);
+    const studentId = studentSelect.value;
+    const mentorId = mentorSelect.value;
 
-      await Notif.add(studentId, `You have been paired with mentor ${freshUsers[mtIdx].name}!`);
-      await Notif.add(mentorId, `You have a new assigned student: ${freshUsers[stIdx].name}.`);
-      alert('Match saved successfully!');
-      location.reload();
+    if (!studentId || !mentorId) {
+      alert('Please select both a student and a mentor.');
+      return;
     }
+
+    if (window.USE_FIREBASE) {
+      // 1. Set the mentorId on the student's profile
+      await firebase.firestore().collection('users').doc(studentId).update({ mentorId: mentorId });
+      
+      // 2. Add the studentId safely to the mentor's array of students using arrayUnion
+      await firebase.firestore().collection('users').doc(mentorId).update({ 
+        studentIds: firebase.firestore.FieldValue.arrayUnion(studentId) 
+      });
+    } else {
+      const freshUsers = await DB.read('users');
+      const stIdx = freshUsers.findIndex(u => u.id === studentId);
+      const mtIdx = freshUsers.findIndex(u => u.id === mentorId);
+      if (stIdx !== -1 && mtIdx !== -1) {
+        freshUsers[stIdx].mentorId = mentorId;
+        freshUsers[mtIdx].studentIds = freshUsers[mtIdx].studentIds || [];
+        if (!freshUsers[mtIdx].studentIds.includes(studentId)) {
+          freshUsers[mtIdx].studentIds.push(studentId);
+        }
+        await DB.write('users', freshUsers);
+      }
+    }
+
+    const currentUsers = await DB.read('users');
+    const studentDoc = currentUsers.find(u => u.id === studentId);
+    const mentorDoc = currentUsers.find(u => u.id === mentorId);
+
+    await Notif.add(studentId, `You have been paired with mentor ${mentorDoc.name}!`);
+    await Notif.add(mentorId, `You have a new assigned student: ${studentDoc.name}.`);
+
+    alert(`Successfully matched ${studentDoc.name} with ${mentorDoc.name}!`);
+    location.reload();
   };
 })();
 </script>
