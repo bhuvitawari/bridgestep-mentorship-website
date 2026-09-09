@@ -33,7 +33,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="platform.js?v=11000"></script>
+<script src="platform.js?v=17000"></script>
 <script>
 (async function init() {
   try {
@@ -44,6 +44,7 @@
 
     const resources = await DB.read('resources');
     const allUsers = await DB.read('users');
+    const programs = await DB.read('programs');
 
     let activeChatUser = null;
     if (user.role === 'student' && user.mentorId) {
@@ -54,6 +55,19 @@
 
     function render() {
       document.getElementById('content').innerHTML = `
+        ${(user.role === 'mentor' || user.role === 'admin') ? `
+          <div class="card" style="margin-bottom:18px;">
+            <h3>Upload a New Resource</h3>
+            <div class="grid grid-2">
+              <div class="field"><label>Title</label><input id="resTitle" placeholder="e.g. Study Planner Template"></div>
+              <div class="field"><label>Program</label>
+                <select id="resProgram">${programs.map(p => `<option>${p.name || p}</option>`).join('')}</select>
+              </div>
+            </div>
+            <button class="btn btn-navy btn-sm" id="uploadResBtn">Add Resource</button>
+          </div>
+        ` : ''}
+
         <div class="card" style="margin-bottom:18px;">
           <h3>Resource Library</h3>
           ${resources.length ? resources.map(r => `
@@ -62,7 +76,7 @@
                 <div class="avatar">📄</div>
                 <div>
                   <div style="font-weight:700;">${r.title}</div>
-                  <div class="meta">${r.program || 'General'} · Type: ${r.type || 'Link'}</div>
+                  <div class="meta">${r.program || 'General'} · Uploaded by ${r.uploadedBy === user.id ? 'You' : 'Admin/Mentor'}</div>
                 </div>
               </div>
               <a href="${r.url || '#'}" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm">Open Resource</a>
@@ -85,6 +99,41 @@
 
     render();
 
+    // Attach Upload Resource Event
+    const uploadBtn = document.getElementById('uploadResBtn');
+    if (uploadBtn) {
+      uploadBtn.addEventListener('click', async () => {
+        const titleInput = document.getElementById('resTitle');
+        const title = titleInput.value.trim();
+        const programSelect = document.getElementById('resProgram');
+        
+        if(!title) {
+          alert('Please enter a resource title.');
+          return;
+        }
+
+        await DB.addResource({
+          title: title,
+          type: 'Link',
+          url: '#',
+          uploadedBy: user.id,
+          program: programSelect ? programSelect.value : 'General',
+          createdAt: nowISO()
+        });
+
+        if (user.role === 'mentor' && user.studentIds) {
+          for (const sId of user.studentIds) {
+            await Notif.add(sId, `New resource added: ${title}.`);
+          }
+        }
+
+        titleInput.value = '';
+        alert('Resource added successfully!');
+        location.reload();
+      });
+    }
+
+    // Attach Chat Events
     if (activeChatUser) {
       async function loadChatMessages() {
         const chatBox = document.getElementById('chatBox');
