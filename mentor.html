@@ -40,7 +40,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="platform.js?v=17000"></script>
+<script src="platform.js?v=18000"></script>
 <script>
 (async function init() {
   const user = await Auth.requireAuth(['mentor']);
@@ -217,23 +217,6 @@
     location.reload();
   };
 
-    await DB.addResource({
-      title: title,
-      type: 'Link',
-      url: '#',
-      uploadedBy: user.id,
-      program: programSelect ? programSelect.value : 'General',
-      createdAt: nowISO()
-    });
-
-    for (const s of myStudents) {
-      await Notif.add(s.id, `New resource added: ${title}.`);
-    }
-
-    titleInput.value = '';
-    alert('Resource added successfully!');
-    location.reload();
-  };
 })();
 </script>
 </body>
