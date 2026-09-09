@@ -17,6 +17,16 @@ const DB = {
     return docRef.id;
   },
 
+async addResource(resourceObj) {
+    if (window.USE_FIREBASE) {
+      const ref = await firebase.firestore().collection('resources').add(resourceObj);
+      return ref.id;
+    }
+    const resources = await this.read('resources');
+    resources.push(resourceObj);
+    await this.write('resources', resources);
+  },
+   
 async getMessages(userAId, userBId) {
   if (!window.USE_FIREBASE) return [];
   const snapshot = await firebase.firestore().collection('messages').get();
