@@ -178,16 +178,31 @@
   });
 
   window.addResource = async function(){
-    const title = document.getElementById('resTitle').value.trim();
-    if(!title) return;
-    const all = await DB.read('resources');
-    all.push({id:uid('res'), title, type:'Link', url:'#', uploadedBy:user.id, program:document.getElementById('resProgram').value});
-    await DB.write('resources', all);
+    const titleInput = document.getElementById('resTitle');
+    const title = titleInput.value.trim();
+    const programSelect = document.getElementById('resProgram');
+    
+    if(!title) {
+      alert('Please enter a resource title.');
+      return;
+    }
+
+    await DB.addResource({
+      title: title,
+      type: 'Link',
+      url: '#',
+      uploadedBy: user.id,
+      program: programSelect ? programSelect.value : 'General',
+      createdAt: nowISO()
+    });
+
     for (const s of myStudents) {
       await Notif.add(s.id, `New resource added: ${title}.`);
     }
-    document.getElementById('resTitle').value='';
-    alert('Resource added — your students will see it in their Resources tab.');
+
+    titleInput.value = '';
+    alert('Resource added successfully!');
+    location.reload();
   };
 })();
 </script>
