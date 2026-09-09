@@ -10,12 +10,13 @@
 window.USE_FIREBASE = true;
 
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyDSUhzjJMKcvzq5Oyuf1vh9Bs0rGFvT68c",
+  authDomain: "bridgestep-mentorship-website.firebaseapp.com",
+  projectId: "bridgestep-mentorship-website",
+  storageBucket: "bridgestep-mentorship-website.firebasestorage.app",
+  messagingSenderId: "71500992177",
+  appId: "1:71500992177:web:46290fa57f129b1331dc90",
+  measurementId: "G-RB3XTCDQPS"
 };
 
 if (!firebase.apps.length) {
