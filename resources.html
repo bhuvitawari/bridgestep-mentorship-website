@@ -33,89 +33,105 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="platform.js?v=10000"></script>
+<script src="platform.js?v=11000"></script>
 <script>
 (async function init() {
-  const user = await Auth.requireAuth(['student', 'mentor', 'admin']);
-  if (!user) return;
+  try {
+    const user = await Auth.requireAuth(['student', 'mentor', 'admin']);
+    if (!user) return;
 
-  await renderChrome(user, 'resources.html');
+    await renderChrome(user, 'resources.html');
 
-  const resources = await DB.read('resources');
-  const allUsers = await DB.read('users');
+    const resources = await DB.read('resources');
+    const allUsers = await DB.read('users');
 
-  let activeChatUser = null;
-  if (user.role === 'student' && user.mentorId) {
-    activeChatUser = allUsers.find(u => u.id === user.mentorId);
-  } else if (user.role === 'mentor' && user.studentIds && user.studentIds.length) {
-    activeChatUser = allUsers.find(u => u.id === user.studentIds[0]);
-  }
-
-  function render() {
-    document.getElementById('content').innerHTML = `
-      <div class="card" style="margin-bottom:18px;">
-        <h3>Resource Library</h3>
-        ${resources.length ? resources.map(r => `
-          <div class="list-row">
-            <div class="who">
-              <div class="avatar">📄</div>
-              <div>
-                <div style="font-weight:700;">${r.title}</div>
-                <div class="meta">${r.program || 'General'} · Type: ${r.type || 'Link'}</div>
-              </div>
-            </div>
-            <a href="${r.url || '#'}" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm">Open Resource</a>
-          </div>
-        `).join('') : `<div class="empty-state">No resources uploaded yet.</div>`}
-      </div>
-
-      <div class="card">
-        <h3>Direct Messages ${activeChatUser ? `with ${activeChatUser.name}` : ''}</h3>
-        ${activeChatUser ? `
-          <div class="chat-box" id="chatBox">Loading messages...</div>
-          <div class="chat-input-row">
-            <input id="chatInput" placeholder="Type a message..." />
-            <button class="btn btn-navy btn-sm" id="sendMsgBtn">Send</button>
-          </div>
-        ` : `<div class="empty-state">You must be matched with a mentor/student to start messaging.</div>`}
-      </div>
-    `;
-  }
-
-  render();
-
-  if (activeChatUser) {
-    async function loadChatMessages() {
-      const messages = await DB.getMessages(user.id, activeChatUser.id);
-      const chatBox = document.getElementById('chatBox');
-      if (!chatBox) return;
-
-      if (!messages.length) {
-        chatBox.innerHTML = `<div class="empty-state">No messages yet. Say hello!</div>`;
-        return;
-      }
-
-      chatBox.innerHTML = messages.map(m => `
-        <div class="msg-bubble ${m.fromId === user.id ? 'msg-me' : 'msg-them'}">
-          <div>${m.text}</div>
-          <div style="font-size:10px; opacity:0.7; margin-top:4px;">${fmtTime(m.ts)}</div>
-        </div>
-      `).join('');
-      chatBox.scrollTop = chatBox.scrollHeight;
+    let activeChatUser = null;
+    if (user.role === 'student' && user.mentorId) {
+      activeChatUser = allUsers.find(u => u.id === user.mentorId);
+    } else if (user.role === 'mentor' && user.studentIds && user.studentIds.length) {
+      activeChatUser = allUsers.find(u => u.id === user.studentIds[0]);
     }
 
-    await loadChatMessages();
+    function render() {
+      document.getElementById('content').innerHTML = `
+        <div class="card" style="margin-bottom:18px;">
+          <h3>Resource Library</h3>
+          ${resources.length ? resources.map(r => `
+            <div class="list-row">
+              <div class="who">
+                <div class="avatar">📄</div>
+                <div>
+                  <div style="font-weight:700;">${r.title}</div>
+                  <div class="meta">${r.program || 'General'} · Type: ${r.type || 'Link'}</div>
+                </div>
+              </div>
+              <a href="${r.url || '#'}" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm">Open Resource</a>
+            </div>
+          `).join('') : `<div class="empty-state">No resources uploaded yet.</div>`}
+        </div>
 
-    document.getElementById('sendMsgBtn').addEventListener('click', async () => {
-      const input = document.getElementById('chatInput');
-      const text = input.value.trim();
-      if (!text) return;
+        <div class="card">
+          <h3>Direct Messages ${activeChatUser ? `with ${activeChatUser.name}` : ''}</h3>
+          ${activeChatUser ? `
+            <div class="chat-box" id="chatBox">Loading messages...</div>
+            <div class="chat-input-row">
+              <input id="chatInput" placeholder="Type a message..." />
+              <button class="btn btn-navy btn-sm" id="sendMsgBtn">Send</button>
+            </div>
+          ` : `<div class="empty-state">You must be matched with a mentor/student to start messaging.</div>`}
+        </div>
+      `;
+    }
 
-      input.value = '';
-      await DB.sendMessage(user.id, activeChatUser.id, text);
-      await Notif.add(activeChatUser.id, `New message from ${user.name}`);
+    render();
+
+    if (activeChatUser) {
+      async function loadChatMessages() {
+        const chatBox = document.getElementById('chatBox');
+        if (!chatBox) return;
+
+        if (typeof DB.getMessages !== 'function') {
+          chatBox.innerHTML = `<div class="empty-state">Messaging functions are updating... please hard refresh.</div>`;
+          return;
+        }
+
+        const messages = await DB.getMessages(user.id, activeChatUser.id);
+
+        if (!messages || !messages.length) {
+          chatBox.innerHTML = `<div class="empty-state">No messages yet. Say hello!</div>`;
+          return;
+        }
+
+        chatBox.innerHTML = messages.map(m => `
+          <div class="msg-bubble ${m.fromId === user.id ? 'msg-me' : 'msg-them'}">
+            <div>${m.text}</div>
+            <div style="font-size:10px; opacity:0.7; margin-top:4px;">${fmtTime(m.ts)}</div>
+          </div>
+        `).join('');
+        chatBox.scrollTop = chatBox.scrollHeight;
+      }
+
       await loadChatMessages();
-    });
+
+      const sendBtn = document.getElementById('sendMsgBtn');
+      if (sendBtn) {
+        sendBtn.addEventListener('click', async () => {
+          const input = document.getElementById('chatInput');
+          const text = input.value.trim();
+          if (!text) return;
+
+          input.value = '';
+          if (typeof DB.sendMessage === 'function') {
+            await DB.sendMessage(user.id, activeChatUser.id, text);
+            await Notif.add(activeChatUser.id, `New message from ${user.name}`);
+            await loadChatMessages();
+          }
+        });
+      }
+    }
+  } catch (err) {
+    console.error("Initialization error on resources page:", err);
+    document.getElementById('content').innerHTML = `<div class="card"><div class="empty-state">Unable to load resources. Check console for details.</div></div>`;
   }
 })();
 </script>
