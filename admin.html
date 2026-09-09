@@ -26,7 +26,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="platform.js?v=14000"></script>
+<script src="platform.js?v=15000"></script>
 <script>
 (async function init() {
   const user = await Auth.requireAuth(['admin']);
@@ -38,6 +38,7 @@
   const allSessions = await DB.read('sessions');
   
   const pendingUsers = allUsers.filter(u => u.status === 'pending');
+  // Strict filter: only users who are approved will show in the matching dropdowns
   const mentors = allUsers.filter(u => u.role === 'mentor' && u.status === 'approved');
   const students = allUsers.filter(u => u.role === 'student' && u.status === 'approved');
   
@@ -77,12 +78,16 @@
         <div class="grid grid-2" style="margin-bottom:12px;">
           <div class="field"><label>Select Student</label>
             <select id="matchStudent">
-              ${students.map(s => `<option value="${s.id}">${s.name} (${s.email})</option>`).join('')}
+              ${students.length > 0 
+                ? students.map(s => `<option value="${s.id}">${s.name} (${s.email})</option>`).join('') 
+                : `<option value="">No approved students available</option>`}
             </select>
           </div>
           <div class="field"><label>Select Mentor</label>
             <select id="matchMentor">
-              ${mentors.map(m => `<option value="${m.id}">${m.name} (${m.email})</option>`).join('')}
+              ${mentors.length > 0 
+                ? mentors.map(m => `<option value="${m.id}">${m.name} (${m.email})</option>`).join('') 
+                : `<option value="">No approved mentors available</option>`}
             </select>
           </div>
         </div>
@@ -142,7 +147,7 @@
     const mentorId = mentorSelect.value;
 
     if (!studentId || !mentorId) {
-      alert('Please select both a student and a mentor.');
+      alert('You must have at least one approved student and one approved mentor to make a match.');
       return;
     }
 
