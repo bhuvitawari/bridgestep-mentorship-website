@@ -5,8 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Resources & Messages | BridgeStep</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="platform.css">
+<style>
+  .chat-box { border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; height: 320px; overflow-y: auto; background: #f8fafc; margin-bottom: 12px; }
+  .msg-bubble { max-width: 70%; padding: 10px 14px; border-radius: 12px; margin-bottom: 10px; font-size: 13.5px; line-height: 1.4; }
+  .msg-me { background: #2563eb; color: #fff; margin-left: auto; text-align: right; border-bottom-right-radius: 2px; }
+  .msg-them { background: #ffffff; color: #1e293b; border: 1px solid #e2e8f0; margin-right: auto; border-bottom-left-radius: 2px; }
+  .chat-input-row { display: flex; gap: 10px; }
+  .chat-input-row input { flex: 1; }
+</style>
 </head>
 <body>
 
@@ -14,7 +22,7 @@
   <aside class="sidebar" id="sidebar"></aside>
   <div class="main">
     <div class="topbar">
-      <h2>Resources & Messages</h2>
+      <h2>Resources & Messaging</h2>
       <div class="topbar-right" id="topbar-right" style="position:relative;"></div>
     </div>
     <div class="content" id="content"></div>
@@ -25,13 +33,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js"></script>
-<script src="platform.js"></script>
-<script src="platform.js?v=2000"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-<script src="firebase-config.js"></script>
-<script src="platform.js?v=3000"></script>
+<script src="platform.js?v=10000"></script>
 <script>
 (async function init() {
   const user = await Auth.requireAuth(['student', 'mentor', 'admin']);
@@ -40,37 +42,18 @@
   await renderChrome(user, 'resources.html');
 
   const resources = await DB.read('resources');
-  const programs = await DB.read('programs');
+  const allUsers = await DB.read('users');
+
+  let activeChatUser = null;
+  if (user.role === 'student' && user.mentorId) {
+    activeChatUser = allUsers.find(u => u.id === user.mentorId);
+  } else if (user.role === 'mentor' && user.studentIds && user.studentIds.length) {
+    activeChatUser = allUsers.find(u => u.id === user.studentIds[0]);
+  }
 
   function render() {
     document.getElementById('content').innerHTML = `
-      ${(user.role === 'mentor' || user.role === 'admin') ? `
-        <div class="card" style="margin-bottom:18px;">
-          <h3>Add New Resource Link</h3>
-          <div class="grid grid-2" style="margin-bottom:12px;">
-            <div class="field"><label>Resource Title</label><input id="resTitle" placeholder="e.g. SAT Math Prep Checklist"></div>
-            <div class="field"><label>Program / Category</label>
-              <select id="resProgram">
-                ${programs.map(p => `<option>${p.name || p}</option>`).join('')}
-              </select>
-            </div>
-          </div>
-          <div class="grid grid-2" style="margin-bottom:12px;">
-            <div class="field"><label>Resource URL (Google Drive / PDF / Doc link)</label><input id="resUrl" placeholder="https://drive.google.com/..."></div>
-            <div class="field"><label>Format Type</label>
-              <select id="resType">
-                <option>PDF / Document</option>
-                <option>Google Drive</option>
-                <option>Video / Audio</option>
-                <option>External Link</option>
-              </select>
-            </div>
-          </div>
-          <button class="btn btn-navy btn-sm" onclick="saveResource()">Save Resource</button>
-        </div>
-      ` : ''}
-
-      <div class="card">
+      <div class="card" style="margin-bottom:18px;">
         <h3>Resource Library</h3>
         ${resources.length ? resources.map(r => `
           <div class="list-row">
@@ -78,40 +61,62 @@
               <div class="avatar">📄</div>
               <div>
                 <div style="font-weight:700;">${r.title}</div>
-                <div class="meta">${r.program} · Type: ${r.type || 'Link'}</div>
+                <div class="meta">${r.program || 'General'} · Type: ${r.type || 'Link'}</div>
               </div>
             </div>
             <a href="${r.url || '#'}" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm">Open Resource</a>
           </div>
-        `).join('') : `<div class="empty-state">No resources available yet.</div>`}
+        `).join('') : `<div class="empty-state">No resources uploaded yet.</div>`}
+      </div>
+
+      <div class="card">
+        <h3>Direct Messages ${activeChatUser ? `with ${activeChatUser.name}` : ''}</h3>
+        ${activeChatUser ? `
+          <div class="chat-box" id="chatBox">Loading messages...</div>
+          <div class="chat-input-row">
+            <input id="chatInput" placeholder="Type a message..." />
+            <button class="btn btn-navy btn-sm" id="sendMsgBtn">Send</button>
+          </div>
+        ` : `<div class="empty-state">You must be matched with a mentor/student to start messaging.</div>`}
       </div>
     `;
   }
+
   render();
 
-  window.saveResource = async function() {
-    const title = document.getElementById('resTitle').value.trim();
-    const url = document.getElementById('resUrl').value.trim();
-    const program = document.getElementById('resProgram').value;
-    const type = document.getElementById('resType').value;
+  if (activeChatUser) {
+    async function loadChatMessages() {
+      const messages = await DB.getMessages(user.id, activeChatUser.id);
+      const chatBox = document.getElementById('chatBox');
+      if (!chatBox) return;
 
-    if (!title || !url) {
-      alert('Please enter both a title and a URL.');
-      return;
+      if (!messages.length) {
+        chatBox.innerHTML = `<div class="empty-state">No messages yet. Say hello!</div>`;
+        return;
+      }
+
+      chatBox.innerHTML = messages.map(m => `
+        <div class="msg-bubble ${m.fromId === user.id ? 'msg-me' : 'msg-them'}">
+          <div>${m.text}</div>
+          <div style="font-size:10px; opacity:0.7; margin-top:4px;">${fmtTime(m.ts)}</div>
+        </div>
+      `).join('');
+      chatBox.scrollTop = chatBox.scrollHeight;
     }
 
-    await DB.addResource({
-      title,
-      url,
-      program,
-      type,
-      uploadedBy: user.id,
-      createdAt: nowISO()
-    });
+    await loadChatMessages();
 
-    alert('Resource link added successfully!');
-    location.reload();
-  };
+    document.getElementById('sendMsgBtn').addEventListener('click', async () => {
+      const input = document.getElementById('chatInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      input.value = '';
+      await DB.sendMessage(user.id, activeChatUser.id, text);
+      await Notif.add(activeChatUser.id, `New message from ${user.name}`);
+      await loadChatMessages();
+    });
+  }
 })();
 </script>
 </body>
