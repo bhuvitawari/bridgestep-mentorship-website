@@ -91,11 +91,17 @@ const Auth = {
       role: data.role,
       status: data.role === 'admin' ? 'approved' : 'pending',
       mentorId: null,
-      studentIds: data.role === 'mentor' ? [] : undefined,
-      goals: data.role === 'student' ? [] : undefined,
       hoursTotal: 0,
       joinDate: nowISO()
     };
+
+    if (data.role === 'mentor') {
+      userDoc.studentIds = [];
+    }
+    if (data.role === 'student') {
+      userDoc.goals = [];
+    }
+
     await firebase.firestore().collection('users').doc(uid).set(userDoc);
     this.setCurrent(userDoc);
     return userDoc;
