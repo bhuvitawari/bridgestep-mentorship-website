@@ -10,17 +10,23 @@
 window.USE_FIREBASE = true;
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDSUhzjJMKcvzq5Oyuf1vh9Bs0rGFvT68c",
-  authDomain: "bridgestep-mentorship-website.firebaseapp.com",
-  projectId: "bridgestep-mentorship-website",
-  storageBucket: "bridgestep-mentorship-website.firebasestorage.app",
-  messagingSenderId: "71500992177",
-  appId: "1:71500992177:web:46290fa57f129b1331dc90",
-  measurementId: "G-RB3XTCDQPS"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 
-// Do not edit below this line.
-window.USE_FIREBASE = !!firebaseConfig.apiKey;
-if(window.USE_FIREBASE){
+if (!firebase.apps.length) {
   firebase.initializeApp(firebaseConfig);
 }
+
+// Keep Firebase auth state synced with your browser session
+firebase.auth().onAuthStateChanged((user) => {
+  if (user) {
+    console.log("Firebase Auth Active:", user.uid);
+  } else {
+    console.warn("No active Firebase Auth user detected.");
+  }
+});
